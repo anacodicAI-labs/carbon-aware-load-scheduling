@@ -31,6 +31,7 @@ from cals import (
     acn_to_jobs,
     alibaba_to_jobs,
     parse_alibaba_trace,
+    load_pai_task_table,
     duration_h,
 )
 
@@ -230,7 +231,10 @@ def get_ai_jobs(*, gpu_power_kw: float = 0.4, flex_hours: int = 6,
     raw, label = None, None
     if csvs:
         try:
-            raw = pd.read_csv(csvs[0])
+            if csvs[0].name == "pai_task_table.csv":
+                raw = load_pai_task_table(csvs[0])
+            else:
+                raw = pd.read_csv(csvs[0])
             label = f"Alibaba GPU v2020 ({csvs[0].name})"
         except Exception as exc:
             if verbose:

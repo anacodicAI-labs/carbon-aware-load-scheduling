@@ -5,8 +5,10 @@
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+.venv/
 
 # large downloaded data (keep committed HVAC; ignore fetched caches)
 data/carbon/
 data/ev/
 data/ai/*.csv
+data/ai/*.tar.gz

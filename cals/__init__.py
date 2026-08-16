@@ -39,5 +39,12 @@ import cuad  # noqa: E402
 CUAD_VENDORED = str(Path(cuad.__file__).resolve().parent)  # where the local cuad lives
 
 # --- this paper's own additions ----------------------------------------------
-from .ai_loads import alibaba_to_jobs, parse_alibaba_trace  # noqa: E402,F401
+from .ai_loads import (  # noqa: E402,F401
+    aggregate_alibaba_tasks,
+    alibaba_to_jobs,
+    iter_pai_task_table,
+    load_pai_task_table,
+    parse_alibaba_trace,
+    uncapped_alibaba_costs,
+)
 from .forecast import climatology_forecast, forecast_penalty  # noqa: E402,F401
