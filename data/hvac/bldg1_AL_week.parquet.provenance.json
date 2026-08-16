@@ -1,0 +1,40 @@
+{
+  "source": "nrel-resstock-eulp",
+  "dataset": "NREL End-Use Load Profiles for the U.S. Building Stock (ResStock)",
+  "release_folder": "2024/resstock_amy2018_release_2",
+  "release": "resstock_amy2018_release_2",
+  "weather": "amy2018",
+  "weather_note": "Actual Meteorological Year 2018 (real July 2018 weather). tmy3 is ruled out: bldg 1 under resstock_tmy3_release_2 gives week-sums 137.338 / 46.072, not 150.245 / 50.099.",
+  "building_id": 1,
+  "upgrade": 0,
+  "state": "AL",
+  "county": "G0100730 (Jefferson County, Alabama)",
+  "puma": "G01001301",
+  "building_type": "Single-Family Detached",
+  "weather_station": "Birmingham Muni",
+  "climate_zone_iecc_2004": "3A",
+  "hvac_cooling": "Central AC, SEER 15",
+  "sqft": 881,
+  "vintage": "1990s",
+  "annual_cooling_kwh": 3312.58,
+  "source_url": "https://oedi-data-lake.s3.amazonaws.com/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/resstock_amy2018_release_2/timeseries_individual_buildings/by_state/upgrade=0/state=AL/1-0.parquet",
+  "metadata_url": "https://oedi-data-lake.s3.amazonaws.com/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/resstock_amy2018_release_2/metadata_and_annual_results/by_state/state=AL/parquet/AL_baseline_metadata_and_annual_results.parquet",
+  "local_file": "bldg1_AL_week.parquet",
+  "local_derivation": "One-week slice (2018-07-15 00:15 .. 2018-07-22 00:00, 672 rows, 15-min end-of-interval) of the six out.electricity HVAC columns from the source per-building timeseries, re-saved via pandas.to_parquet. The original ResStock DatetimeIndex and key/value metadata were not preserved, which is why this provenance had to be recovered by fingerprint rather than read from the file.",
+  "timezone": "US Central Standard Time (UTC-6), no DST (ResStock local-standard-time convention)",
+  "fingerprint_week": "2018-07-15..2018-07-22",
+  "fingerprint_sums_kwh": {
+    "out.electricity.cooling.energy_consumption": 150.245,
+    "out.electricity.cooling_fans_pumps.energy_consumption": 50.099,
+    "out.electricity.heating.energy_consumption": 0.0,
+    "out.electricity.heating_fans_pumps.energy_consumption": 0.0,
+    "out.electricity.heating_hp_bkup.energy_consumption": 0.0,
+    "out.electricity.heating_hp_bkup_fa.energy_consumption": 0.0
+  },
+  "recovered_on": "2026-08-10",
+  "recovered_by": "Fingerprint match against the OEDI data lake: building_id / upgrade / release / weather were not recorded in the original file. Matched cooling and cooling_fans week-sums to full precision against the amy2018 release_2 AL by-state timeseries; tmy3 ruled out.",
+  "caveats": [
+    "Weather year is amy2018, so this HVAC load is actual July 2018 meteorology. carbon_sim.py re-dates it +364 days to July 2019 (REDATE) to meet the 2019 EIA carbon series -- a cross-year join (2018 weather priced against 2019 grid carbon), disclosed in carbon_sim.py's module docstring.",
+    "This local file is a one-week summer slice. A full-year run needs the full source timeseries: heating is 0 here only because July has no electric heating; winter would be non-zero, which is exactly the seasonality gap behind the 'heating and cooling' phrasing."
+  ]
+}

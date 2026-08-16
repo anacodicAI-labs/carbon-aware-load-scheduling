@@ -1,0 +1,8 @@
+pandas>=2.0
+numpy>=1.24
+requests>=2.31
+scipy>=1.11          # HiGHS MILP solver for schedule_optimal / schedule_preemptible
+pyarrow>=14.0        # read the NREL ResStock parquet files
+matplotlib>=3.7      # figures in the notebooks
+python-dotenv>=1.0   # load .env
+jupyter>=1.0
