@@ -22,13 +22,12 @@ grid carbon, an invented EV session has no honest default.
 from __future__ import annotations
 
 import json
+import os
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from acnportal.acndata import DataClient
 from acnportal.acndata.utils import http_date
-
-from cuad.config.settings import get_settings
 
 _ACN_URL = "https://ev.caltech.edu/api/v1/"
 
@@ -91,12 +90,11 @@ def _row(session: dict) -> dict:
 
 def _token(api_token: str | None) -> str:
     """The ACN token, from the argument or the ACN_API_TOKEN setting. Raise if absent."""
-    token = api_token if api_token is not None else get_settings().acn_api_token
+    token = api_token if api_token is not None else os.environ.get("ACN_API_TOKEN", "")
     if not token:
         raise RuntimeError(
             "ACN-Data API token is not set. Provide api_token= or set ACN_API_TOKEN "
-            "(cuad.config.settings.acn_api_token). There is no synthetic fallback for "
-            "EV sessions."
+            "in the environment. There is no synthetic fallback for EV sessions."
         )
     return token
 

@@ -6,3 +6,4 @@ pyarrow>=14.0        # read the NREL ResStock parquet files
 matplotlib>=3.7      # figures in the notebooks
 python-dotenv>=1.0   # load .env
 jupyter>=1.0
+acnportal>=0.3.3     # real Caltech ACN-Data EV sessions

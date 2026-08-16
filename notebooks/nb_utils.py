@@ -192,7 +192,7 @@ def get_ev_jobs(*, n: int = 200, verbose: bool = True):
     try:
         from cals.acn_sessions import fetch_acn_sessions  # imports acnportal
         import datetime as _dt
-        sessions = fetch_acn_sessions(_dt.date(2018, 6, 1), _dt.date(2018, 6, 30),
+        sessions = fetch_acn_sessions(_dt.date(2019, 1, 1), _dt.date(2019, 12, 31),
                                       cache_dir=DATA / "ev")
         return acn_to_jobs(sessions), "ACN-Data caltech (LIVE API)"
     except Exception as exc:
