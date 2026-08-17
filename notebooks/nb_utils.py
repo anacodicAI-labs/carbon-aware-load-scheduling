@@ -257,6 +257,27 @@ def savings_pct(baseline_gco2: float, opt_gco2: float) -> float:
     return 100.0 * (baseline_gco2 - opt_gco2) / baseline_gco2 if baseline_gco2 else 0.0
 
 
+def bootstrap_savings_ci(
+    baseline_daily: pd.Series,
+    scheduled_daily: pd.Series,
+    *,
+    n_boot: int = 1_000,
+    seed: int = 42,
+) -> tuple[float, float]:
+    """Return a 95% bootstrap CI for savings by resampling whole days."""
+    if not baseline_daily.index.equals(scheduled_daily.index):
+        raise ValueError("baseline and scheduled daily totals must share an index")
+    if baseline_daily.empty or n_boot < 1:
+        raise ValueError("daily totals must be nonempty and n_boot must be positive")
+
+    values = np.column_stack((baseline_daily.to_numpy(float), scheduled_daily.to_numpy(float)))
+    picks = np.random.default_rng(seed).integers(0, len(values), size=(n_boot, len(values)))
+    totals = values[picks].sum(axis=1)
+    savings = 100.0 * (totals[:, 0] - totals[:, 1]) / totals[:, 0]
+    lower, upper = np.quantile(savings, [0.025, 0.975])
+    return float(lower), float(upper)
+
+
 def price_at(job, start, ci: pd.Series) -> float:
     """kWh-weighted gCO2 of running ``job`` for its whole duration from ``start``.
 
