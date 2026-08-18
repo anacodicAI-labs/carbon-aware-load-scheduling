@@ -26,8 +26,11 @@ import os
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-from acnportal.acndata import DataClient
-from acnportal.acndata.utils import http_date
+# acnportal is imported LAZILY inside fetch_acn_sessions, not at module scope.
+# A module-level import made `import cals.acn_sessions` raise ModuleNotFoundError
+# without acnportal installed, so callers fell back to synthetic sessions even
+# when a real cached pull was sitting on disk. Only the live-fetch path needs the
+# library; serving a cache must not.
 
 _ACN_URL = "https://ev.caltech.edu/api/v1/"
 
@@ -83,6 +86,7 @@ def _row(session: dict) -> dict:
     for field in _FIELDS:
         value = session.get(field)
         if isinstance(value, datetime):
+            from acnportal.acndata.utils import http_date  # lazy
             value = http_date(value)
         out[field] = value
     return out
@@ -123,6 +127,7 @@ def count_acn_sessions(
     Uses get_sessions_by_time(count=True) so a full-year footprint can be reported
     before committing to a download.
     """
+    from acnportal.acndata import DataClient  # lazy: cache path needs no acnportal
     client = DataClient(api_token=_token(api_token), url=_ACN_URL)
     start_dt, end_dt = _window(start, end)
     return int(
@@ -170,6 +175,7 @@ def fetch_acn_sessions(
     if cache.is_file() and not refresh:
         return json.loads(cache.read_text())
 
+    from acnportal.acndata import DataClient  # lazy: cache path needs no acnportal
     client = DataClient(api_token=_token(api_token), url=_ACN_URL)
     start_dt, end_dt = _window(start, end)
     # get_sessions_by_time returns a generator that pages via _links.next.

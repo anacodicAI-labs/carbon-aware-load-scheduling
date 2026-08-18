@@ -1,12 +1,13 @@
 """Shared helpers for the five paper notebooks.
 
-Nothing here is novel science -- it is glue that (a) GUARDS every live-API /
-download path so the notebooks always run offline, and (b) keeps the demo data
-clearly LABELLED so a reader never confuses a synthetic curve for a measured one.
+Nothing here is novel science -- it is glue that (a) keeps every reported number
+sourced from REAL data, failing loudly rather than substituting a plausible
+stand-in, and (b) keeps illustrative demo data clearly LABELLED so a reader never
+confuses a synthetic curve for a measured one.
 All the real modelling lives in ``cals`` (imported below, never reimplemented).
 
-The two guarded, network/key-gated paths:
-  * carbon signal   -> EIA Open Data API   (needs EIA_API_KEY)
+The two network/key-gated paths, both of which RAISE rather than fake it:
+  * carbon signal   -> EIA Open Data API   (needs EIA_API_KEY, or a real cache)
   * EV charging      -> Caltech ACN-Data    (needs acnportal + ACN_API_TOKEN)
 The two offline-real paths:
   * HVAC load        -> committed NREL ResStock parquet in data/hvac/
@@ -17,6 +18,7 @@ The download-gated path:
 """
 from __future__ import annotations
 
+import json
 import math
 import os
 from pathlib import Path
@@ -49,6 +51,11 @@ FIG.mkdir(exist_ok=True)
 CI_START = "2019-01-01"
 CI_END = "2020-01-02"  # +2-day buffer so job windows near year-end stay priceable
 DEMO_ORIGIN = pd.Timestamp("2019-06-01", tz="UTC")  # EV/AI demo loads land in 2019 too
+
+# ResStock amy2018 -> 2019 carbon year. +365d for a FULL YEAR (exact day-for-day
+# bijection); the AL one-week slice uses +364d (preserves weekday). Full
+# justification in load_hvac_jobs(); mirrored in the .provenance.json sidecars.
+MA_REDATE = pd.Timedelta(days=365)
 
 
 # --- carbon signal -----------------------------------------------------------
@@ -89,30 +96,67 @@ def demo_fuel_mix(start: str = CI_START, end: str = CI_END, seed: int = 0) -> pd
     return pd.concat(frames, ignore_index=True)
 
 
+def _eia_cache_status(start: str, end: str, region: str) -> tuple[Path, bool]:
+    """(cache path, is it a REAL eia pull?) for this window.
+
+    Mirrors fetch_eia_fuel_mix's cache naming. A cache counts as real only when
+    its provenance sidecar records source=="eia"; a synthetic-sourced cache is
+    treated as absent so it can never stand in for the real signal.
+    """
+    respondent = {"ISO-NE": "ISNE", "ISONE": "ISNE"}.get(region, region)
+    cache = (DATA / "carbon" / "eia" /
+             f"fuelmix_{respondent}_{pd.Timestamp(start).date()}_{pd.Timestamp(end).date()}.csv")
+    meta = cache.with_suffix(cache.suffix + ".meta.json")
+    if not cache.is_file() or not meta.is_file():
+        return cache, False
+    try:
+        return cache, json.loads(meta.read_text()).get("source") == "eia"
+    except Exception:
+        return cache, False
+
+
 def get_fuel_mix(start: str = CI_START, end: str = CI_END, region: str = "ISO-NE",
                  verbose: bool = True) -> tuple[pd.DataFrame, str]:
-    """Hourly fuel mix [timestamp, fueltype, gen_mwh], guarded. Returns (mix, label).
+    """Hourly fuel mix [timestamp, fueltype, gen_mwh], REAL ONLY. Returns (mix, label).
 
-    If EIA_API_KEY is set (loaded from ../.env), fetch the real ISO-NE mix.
-    Otherwise print a clear warning and return a LABELLED demo mix -- so nothing
-    ever crashes on a missing key. Exposing the *mix* (not just the CI) lets the
-    emission-factor sensitivity sweep re-price it under alternative factors.
+    Requires either EIA_API_KEY (loaded from ../.env) or a previously cached REAL
+    EIA pull for this window, and RAISES with neither. A cache whose provenance
+    sidecar says "synthetic" does not count. There is deliberately no synthetic
+    fallback and no flag to re-enable one: this
+    function feeds every reported number, and a fabricated carbon curve produces
+    plausible-looking savings that are indistinguishable from real ones in a
+    notebook's stored output. Failing loudly is the only honest default.
+
+    ``demo_fuel_mix`` still exists for clearly-labelled illustration only (see
+    notebook 01's single-day derivation figure); it must never reach a result.
+
+    Exposing the *mix* (not just the CI) lets the emission-factor sensitivity
+    sweep re-price it under alternative factors.
     """
     key = os.environ.get("EIA_API_KEY", "").strip()
-    if key:
-        try:
-            mix = fetch_eia_fuel_mix(
-                pd.Timestamp(start).date(), pd.Timestamp(end).date(),
-                region, raw_dir=DATA / "carbon", api_key=key,
-            )
-            return mix, f"EIA {region} (LIVE API)"
-        except Exception as exc:  # network hiccup, bad key, cache clash -> stay runnable
-            if verbose:
-                print(f"EIA fetch failed ({type(exc).__name__}: {exc}); using DEMO mix instead.")
-    elif verbose:
-        print("⚠️  set EIA_API_KEY in .env to fetch real carbon; "
-              "using a labelled DEMO CI curve instead")
-    return demo_fuel_mix(start, end), "DEMO synthetic CI (offline)"
+    cache, cache_is_real = _eia_cache_status(start, end, region)
+    if not key and not cache_is_real:
+        raise RuntimeError(
+            "EIA_API_KEY is not set and there is no real cached EIA fuel mix at "
+            f"{cache}, so the ISO-NE carbon signal cannot be built. Copy .env.example "
+            "to .env and add your key (EIA_API_KEY=...), or export it in the "
+            "environment. This function has NO synthetic fallback on purpose -- every "
+            "reported number must come from the real EIA signal."
+        )
+    try:
+        mix = fetch_eia_fuel_mix(
+            pd.Timestamp(start).date(), pd.Timestamp(end).date(),
+            region, raw_dir=DATA / "carbon", api_key=key,
+            use_synthetic_if_missing=False,  # never invent a curve
+        )
+    except Exception as exc:  # bad key, network, cache clash -- never fall back
+        raise RuntimeError(
+            f"EIA fuel-mix fetch failed for {region} {start}..{end} "
+            f"({type(exc).__name__}: {exc}). Refusing to substitute a synthetic curve."
+        ) from exc
+    if mix is None or len(mix) == 0:
+        raise RuntimeError(f"EIA returned no fuel-mix rows for {region} {start}..{end}.")
+    return mix, f"EIA {region} ({'LIVE API' if key else 'cached real pull'})"
 
 
 def get_carbon_intensity(start: str = CI_START, end: str = CI_END, region: str = "ISO-NE",
@@ -146,13 +190,31 @@ def load_hvac_jobs(fname: str = "bldg486202_MA_year.parquet", *, flex_hours: int
 
     Returns (jobs, run_hours, raw_df). run_hours maps job_id -> the UTC hour the
     HVAC ACTUALLY ran (the do-nothing baseline hour).
+
+    RE-DATE (+365 days) -- canonical statement; the provenance sidecars point here.
+    ResStock profiles are amy2018 (real 2018 weather); EIA's ISO-NE hourly
+    fuel-type series begins 2019-01-01, so the load must be moved onto the carbon
+    year. Two rules are defensible and this repo uses BOTH, for different windows:
+
+      +365d  FULL-YEAR MA buildings (this function). 2018 and 2019 are both
+             non-leap, so +365d is an exact day-for-day bijection of the whole
+             year: Jan 1 -> Jan 1, Dec 31 -> Dec 31, nothing dropped or
+             duplicated. Preserves DATE (hence season), shifts weekday by one.
+      +364d  the AL one-WEEK slice (52 weeks; preserves season AND weekday).
+             Correct for a 7-day window, wrong for a year: it maps 2018-01-01
+             onto 2018-12-31, leaving 2019-12-31 uncovered and spilling a day
+             back into 2018.
+
+    +365d is chosen here because for both the carbon signal and the HVAC load the
+    seasonal/date component dwarfs the weekday/weekend component, so preserving
+    the date is worth more than preserving the weekday. This matches upstream
+    carbon_sim.py, which defines REDATE=364 for the AL week and MA_REDATE=365 for
+    the MA full year. The pairing remains a cross-year join (2018 weather priced
+    against 2019 grid carbon) and must be disclosed as such in the manuscript.
     """
     df = pd.read_parquet(DATA / "hvac" / fname)
-    # ResStock is amy2018 (2018 weather); real EIA ISO-NE carbon starts 2019.
-    # Re-date +365 days -- both are non-leap years, so it is an exact day-for-day
-    # shift -- so the 2018 load lines up with the 2019 carbon curve (Rajan's rule).
     df = df.copy()
-    df["timestamp"] = pd.to_datetime(df["timestamp"]) + pd.Timedelta(days=365)
+    df["timestamp"] = pd.to_datetime(df["timestamp"]) + MA_REDATE
     jobs, run_hours = nrel_to_jobs(df, utc_offset_hours=utc_offset_hours, flex_hours=flex_hours)
     return jobs, run_hours, df
 
@@ -184,22 +246,35 @@ def demo_ev_sessions(n: int = 200, seed: int = 1, origin: pd.Timestamp = DEMO_OR
 
 
 def get_ev_jobs(*, n: int = 200, verbose: bool = True):
-    """EV charging Jobs, guarded. Returns (jobs, source_label).
+    """REAL Caltech ACN-Data EV Jobs for 2019. Returns (jobs, source_label). RAISES.
 
-    Tries live Caltech ACN-Data (needs acnportal + ACN_API_TOKEN). If either is
-    absent it skips gracefully to a LABELLED demo set rather than erroring.
+    Served from the committed cache in data/ev/ when present, else fetched live
+    (needs acnportal + ACN_API_TOKEN). Like the carbon signal, this no longer
+    degrades to a synthetic set: the demo sessions are not real driver behaviour,
+    and silently substituting them produced an EV saving that looked reportable
+    but was not. ``demo_ev_sessions`` remains for illustration only.
     """
+    import datetime as _dt
+
+    from cals.acn_sessions import fetch_acn_sessions, read_provenance
+
+    start, end = _dt.date(2019, 1, 1), _dt.date(2019, 12, 31)
+    cache = DATA / "ev" / f"caltech_{start}_{end}.json"
     try:
-        from cals.acn_sessions import fetch_acn_sessions  # imports acnportal
-        import datetime as _dt
-        sessions = fetch_acn_sessions(_dt.date(2019, 1, 1), _dt.date(2019, 12, 31),
-                                      cache_dir=DATA / "ev")
-        return acn_to_jobs(sessions), "ACN-Data caltech (LIVE API)"
+        sessions = fetch_acn_sessions(start, end, cache_dir=DATA / "ev")
     except Exception as exc:
-        if verbose:
-            print(f"EV: real ACN-Data unavailable ({type(exc).__name__}); using a labelled "
-                  "DEMO EV set. Install acnportal + set ACN_API_TOKEN for real sessions.")
-        return acn_to_jobs(demo_ev_sessions(n=n)), "DEMO synthetic EV (offline)"
+        raise RuntimeError(
+            f"Real Caltech ACN-Data sessions are unavailable ({type(exc).__name__}: {exc}). "
+            f"Expected a cached pull at {cache}, or install acnportal and set "
+            "ACN_API_TOKEN to fetch live. Refusing to substitute synthetic EV sessions."
+        ) from exc
+    prov = read_provenance(cache) or {}
+    label = "ACN-Data caltech 2019 (%s)" % (
+        "cached real pull" if cache.is_file() else "LIVE API")
+    if verbose and prov:
+        print(f"EV: {prov.get('session_count', len(sessions))} real sessions "
+              f"from {prov.get('endpoint', 'acn-data')}")
+    return acn_to_jobs(sessions), label
 
 
 # --- AI load (download-gated: Alibaba GPU v2020) ----------------------------
