@@ -40,8 +40,9 @@
   "obtained_by": "Direct OEDI download of a building identified by scripts/select_hvac_building.py (not a fingerprint recovery).",
   "caveats": [
     "PEAK DRIVER DIFFERS FROM THE AL BUILDING: this MA peak is WINTER / heat-pump-BACKUP-driven (electric-resistance strips on the coldest hours), whereas the AL building's 2.761 kW peak was SUMMER / COOLING-driven. The capacity cap therefore has a different physical meaning and falls in a different season in the two buildings.",
-    "Weather year amy2018: if paired with 2019 EIA carbon, the same +364d cross-year join as the AL building applies.",
+    "Weather year amy2018 paired with 2019 EIA carbon via a +365-day re-date (NOT the AL week's +364d). 2018 and 2019 are both non-leap, so +365d is an exact day-for-day bijection of the whole year: Jan 1 -> Jan 1, Dec 31 -> Dec 31, nothing dropped or duplicated. The +364d rule preserves WEEKDAY instead, which is the right trade for a 7-day window but breaks over a full year (it maps 2018-01-01 onto 2018-12-31, leaving 2019-12-31 uncovered and spilling a day back into 2018). For both the carbon signal and the HVAC load the seasonal/date component dwarfs the weekday component, so preserving the DATE is worth more. Canonical statement and justification: notebooks/nb_utils.py load_hvac_jobs().",
     "Heat pump is only ~1.4% of MA single-family-detached stock (MA is ~48% gas, ~40% oil); an electrification-forward case chosen for a dual-season electric HVAC load, not a representative MA dwelling.",
     "Heating energy includes electric-resistance backup (heating_hp_bkup, heating_hp_bkup_fa), which nrel_to_jobs sums into the same hourly block as heat-pump heating; a block cannot be decomposed after the fact."
-  ]
+  ],
+  "redate_days": 365
 }

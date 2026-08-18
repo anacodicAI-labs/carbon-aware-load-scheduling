@@ -45,17 +45,32 @@ def _cheapest_start(job: Job, ci: pd.Series, dur: int):
     return best_s
 
 
-def forecast_penalty(jobs: list[Job], true_ci: pd.Series, fcst_ci: pd.Series) -> dict:
+def forecast_penalty(
+    jobs: list[Job],
+    true_ci: pd.Series,
+    fcst_ci: pd.Series,
+    baseline_hours: dict | None = None,
+) -> dict:
     """Oracle vs forecast savings vs a do-nothing baseline, over the shared set.
 
-    do-nothing baseline = run at earliest_start; oracle = cheapest window under
-    TRUE ci; forecast = cheapest window under FORECAST ci, but PRICED on true ci.
+    do-nothing baseline = ``baseline_hours[job_id]`` when given, else
+    earliest_start; oracle = cheapest window under TRUE ci; forecast = cheapest
+    window under FORECAST ci, but PRICED on true ci.
+
+    PASS baseline_hours FOR HVAC. Its window is [run - flex, run + 1 + flex), so
+    an earliest_start baseline silently advances every job by `flex` hours onto
+    cleaner grid hours, making the control a function of the flex knob and
+    understating the saving. adapters.py:66-69 warns about exactly this, and the
+    rest of the pipeline prices HVAC at its metered run hour. EV is unaffected:
+    its earliest_start IS the plug-in hour, so the two coincide.
     """
     one_h = pd.Timedelta(hours=1)
     rows = []
     for j in jobs:
         dur = duration_h(j)
-        base_s = pd.Timestamp(j.earliest_start)
+        base_s = pd.Timestamp(
+            j.earliest_start if baseline_hours is None else baseline_hours[j.job_id]
+        )
         oracle_s = _cheapest_start(j, true_ci, dur)
         fcst_s = _cheapest_start(j, fcst_ci, dur)
         if oracle_s is None or fcst_s is None or base_s not in true_ci.index:
