@@ -6,15 +6,19 @@ stand-in, and (b) keeps illustrative demo data clearly LABELLED so a reader neve
 confuses a synthetic curve for a measured one.
 All the real modelling lives in ``cals`` (imported below, never reimplemented).
 
-The two network/key-gated paths, both of which RAISE rather than fake it:
+Every data path RAISES rather than faking it -- there is no synthetic fallback
+left anywhere in this module, and no flag to re-enable one:
   * carbon signal   -> EIA Open Data API   (needs EIA_API_KEY, or a real cache)
-  * EV charging      -> Caltech ACN-Data    (needs acnportal + ACN_API_TOKEN)
+  * EV charging      -> Caltech ACN-Data    (needs a real cache, or acnportal +
+                        ACN_API_TOKEN)
+  * AI load          -> Alibaba GPU v2020 trace (drop a real CSV in data/ai/);
+                        recorded real-trace results live in results/ai_sweep.csv
 The two offline-real paths:
   * HVAC load        -> committed NREL ResStock parquet in data/hvac/
   * emission factors -> cals.FACTORS
-The download-gated path:
-  * AI load          -> Alibaba GPU v2020 trace (drop a CSV in data/ai/); a
-                        clearly-labelled synthetic Alibaba-shaped frame stands in.
+
+The demo_* helpers (demo_fuel_mix, demo_ev_sessions, demo_alibaba_trace) are
+retained for clearly-labelled ILLUSTRATION only and must never reach a result.
 """
 from __future__ import annotations
 
@@ -296,31 +300,36 @@ def demo_alibaba_trace(n: int = 300, seed: int = 2, span_days: int = 20) -> pd.D
 
 def get_ai_jobs(*, gpu_power_kw: float = 0.4, flex_hours: int = 6,
                 origin: pd.Timestamp = DEMO_ORIGIN, verbose: bool = True):
-    """AI-compute Jobs, guarded. Returns (jobs, parsed_df, source_label).
+    """REAL Alibaba GPU v2020 AI-compute Jobs. Returns (jobs, parsed_df, label). RAISES.
 
-    Uses a real Alibaba GPU v2020 CSV if one is present in data/ai/; otherwise a
-    LABELLED synthetic Alibaba-shaped frame. gpu_power_kw and flex_hours are the
-    two swept assumptions (see notebook 04 style sweeps).
+    Requires a real trace CSV in data/ai/ and raises without one. Like the carbon
+    signal and the EV sessions, this no longer degrades to a synthetic frame: a
+    made-up job mix produces a savings number that looks reportable but measures
+    nothing. ``demo_alibaba_trace`` remains for illustration only.
+
+    gpu_power_kw and flex_hours are the two swept assumptions. NOTE that
+    gpu_power_kw cancels out of the savings PERCENTAGE (it scales the baseline
+    and the schedule identically) and moves only absolute gCO2 -- see
+    results/ai_sweep.csv and figure 04e.
     """
     csvs = sorted((DATA / "ai").glob("*.csv"))
-    raw, label = None, None
-    if csvs:
-        try:
-            if csvs[0].name == "pai_task_table.csv":
-                raw = load_pai_task_table(csvs[0])
-            else:
-                raw = pd.read_csv(csvs[0])
-            label = f"Alibaba GPU v2020 ({csvs[0].name})"
-        except Exception as exc:
-            if verbose:
-                print(f"AI: failed to read {csvs[0].name} ({exc}); using synthetic.")
-            raw = None
-    if raw is None:
-        if verbose:
-            print("AI: real Alibaba GPU v2020 trace not found in data/ai/; using a "
-                  "labelled SYNTHETIC Alibaba-shaped trace.")
-        raw = demo_alibaba_trace()
-        label = "DEMO synthetic Alibaba (offline)"
+    if not csvs:
+        raise FileNotFoundError(
+            f"No Alibaba GPU v2020 trace in {DATA / 'ai'}. Download "
+            "cluster-trace-gpu-v2020 (pai_task_table.csv) from "
+            "https://github.com/alibaba/clusterdata/tree/master/cluster-trace-gpu-v2020 "
+            "and drop it there. Refusing to substitute a synthetic trace; the "
+            "recorded real-trace results are in results/ai_sweep.csv."
+        )
+    try:
+        raw = (load_pai_task_table(csvs[0]) if csvs[0].name == "pai_task_table.csv"
+               else pd.read_csv(csvs[0]))
+    except Exception as exc:
+        raise RuntimeError(
+            f"Failed to read the Alibaba trace at {csvs[0]} ({type(exc).__name__}: "
+            f"{exc}). Refusing to substitute a synthetic trace."
+        ) from exc
+    label = f"Alibaba GPU v2020 ({csvs[0].name})"
     parsed = parse_alibaba_trace(raw, origin=origin)
     jobs = alibaba_to_jobs(parsed, gpu_power_kw=gpu_power_kw, flex_hours=flex_hours)
     return jobs, parsed, label
