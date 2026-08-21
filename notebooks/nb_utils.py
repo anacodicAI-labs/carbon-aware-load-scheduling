@@ -187,6 +187,22 @@ def ci_from_factors(mix: pd.DataFrame, factors: dict) -> pd.Series:
     return ci.sort_index()
 
 
+def marginal_ci_proxy(mix: pd.DataFrame) -> pd.Series:
+    """Hourly oil-or-gas marginal-emissions proxy (gCO2/kWh).
+
+    The proxy is 650 when oil is generating and 490 otherwise. It is an
+    accounting sensitivity, not measured marginal-emissions data.
+    """
+    df = mix[["timestamp", "fueltype", "gen_mwh"]].copy()
+    df["gen_mwh"] = pd.to_numeric(df["gen_mwh"], errors="coerce").fillna(0.0)
+    oil_generation = df.loc[df["fueltype"] == "OIL"].groupby("timestamp")["gen_mwh"].sum()
+    timestamps = pd.Index(df["timestamp"].unique()).sort_values()
+    ci = pd.Series(490.0, index=timestamps, dtype=float)
+    ci.loc[oil_generation[oil_generation > 0].index] = 650.0
+    ci.name = "marginal_proxy_gco2_kwh"
+    return ci
+
+
 # --- HVAC load (real, offline) ----------------------------------------------
 def load_hvac_jobs(fname: str = "bldg486202_MA_year.parquet", *, flex_hours: int = 6,
                    utc_offset_hours: int = -5):
