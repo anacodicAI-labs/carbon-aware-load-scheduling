@@ -5,5 +5,7 @@ scipy>=1.11          # HiGHS MILP solver for schedule_optimal / schedule_preempt
 pyarrow>=14.0        # read the NREL ResStock parquet files
 matplotlib>=3.7      # figures in the notebooks
 python-dotenv>=1.0   # load .env
+pydantic>=2.0       # vendored cuad configuration models
+pydantic-settings>=2.0  # load vendored cuad settings from .env
 jupyter>=1.0
 acnportal>=0.3.3     # real Caltech ACN-Data EV sessions

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -25,6 +26,18 @@ class BootstrapSavingsTests(unittest.TestCase):
         self.assertEqual((lower, upper), (repeat_lower, repeat_upper))
         self.assertLessEqual(lower, observed)
         self.assertLessEqual(observed, upper)
+
+    def test_robustness_notebook_uses_the_working_capacity_cap(self) -> None:
+        notebook_path = Path(__file__).resolve().parents[1] / "notebooks" / "04_sweeps.ipynb"
+        notebook = json.loads(notebook_path.read_text())
+        cell = next(cell for cell in notebook["cells"] if cell.get("id") == "ma-building-robustness-run")
+        source = "".join(cell["source"])
+
+        self.assertIn(
+            "cap_kw = round(WORKING_CAP_K * median_active_kw(jobs), 6)",
+            source,
+        )
+        self.assertIn("capacity_kw=cap_kw", source)
 
 
 if __name__ == "__main__":

@@ -187,6 +187,88 @@ def ci_from_factors(mix: pd.DataFrame, factors: dict) -> pd.Series:
     return ci.sort_index()
 
 
+# --- marginal emission basis (Section 4.9) -----------------------------------
+# The average basis (carbon_intensity / ci_from_factors) charges each kWh the
+# generation-weighted MEAN of the hour's mix. The marginal basis charges it the
+# emissions of the unit that would actually RESPOND to an increment of demand.
+#
+# Why this is NOT a {fueltype: factor} dict. ci_from_factors' per-fuel shape is
+# right for the OTH sensitivity, where the uncertainty is about a fuel's own
+# lifecycle intensity. It cannot express a marginal basis at all, because
+# "marginal" is a property of the HOUR (who is on the margin right now), not of a
+# fuel. Feeding a marginal vector through the generation-weighted mean would
+# re-average it over nuclear, wind, hydro and solar -- none of which ever set the
+# margin in ISO-NE, since they are must-run or zero-marginal-cost and are already
+# fully dispatched. The averaging step is precisely the operation a marginal
+# signal must not perform.
+#
+# The rule implemented here is the standard coarse merit-order approximation for
+# ISO-NE: gas combined-cycle is marginal in the large majority of hours, and oil
+# steam/CT units are called only at winter peaks, where they set the margin.
+MARGINAL_OIL_GCO2_KWH = 650.0  # oil on the margin (same lifecycle value as FACTORS["OIL"])
+MARGINAL_GAS_GCO2_KWH = 490.0  # gas CC on the margin (same lifecycle value as FACTORS["NG"])
+
+
+def oil_generating_hours(mix: pd.DataFrame, *, threshold_mwh: float = 0.0) -> pd.Series:
+    """Boolean per-hour mask: is OIL generating in this hour?
+
+    ``threshold_mwh`` is the strict lower bound on clipped OIL generation (the
+    default 0.0 means "any oil at all", i.e. gen_mwh > 0). Exposed only so the
+    marginal rule's sensitivity to the threshold can be REPORTED; the headline
+    marginal basis uses the default.
+    """
+    df = mix[["timestamp", "fueltype", "gen_mwh"]].copy()
+    df["gen_mwh"] = pd.to_numeric(df["gen_mwh"], errors="coerce").fillna(0.0).clip(lower=0.0)
+    oil = df[df["fueltype"] == "OIL"].groupby("timestamp")["gen_mwh"].sum()
+    hours = df.groupby("timestamp")["gen_mwh"].sum().index
+    return (oil.reindex(hours, fill_value=0.0) > threshold_mwh).sort_index()
+
+
+def marginal_ci(mix: pd.DataFrame, *, threshold_mwh: float = 0.0,
+                oil_gco2: float = MARGINAL_OIL_GCO2_KWH,
+                gas_gco2: float = MARGINAL_GAS_GCO2_KWH) -> pd.Series:
+    """Hour-dependent MARGINAL carbon intensity (gCO2/kWh) for the same fuel mix.
+
+    Two-valued step function over the hours of ``mix``:
+        oil_gco2 (650) in hours where OIL is generating -- oil sets the margin at
+                       winter peaks, so an added kWh is served by an oil unit;
+        gas_gco2 (490) otherwise -- gas combined-cycle is marginal in the large
+                       majority of ISO-NE hours.
+
+    Returned on the SAME hourly index as ``carbon_intensity(mix)``, and NaN in the
+    same places: an hour with zero total generation cannot be priced on either
+    basis, so both signals mask it and the two runs share an identical set of
+    feasible placements. Without that alignment the average and marginal arms
+    could schedule over different hours and the delta would not be attributable
+    to the accounting basis.
+    """
+    df = mix[["timestamp", "fueltype", "gen_mwh"]].copy()
+    df["gen_mwh"] = pd.to_numeric(df["gen_mwh"], errors="coerce").fillna(0.0).clip(lower=0.0)
+    total = df.groupby("timestamp")["gen_mwh"].sum().sort_index()
+
+    on_oil = oil_generating_hours(mix, threshold_mwh=threshold_mwh).reindex(total.index, fill_value=False)
+    ci = pd.Series(np.where(on_oil.to_numpy(), oil_gco2, gas_gco2),
+                   index=total.index, dtype=float)
+    ci = ci.where(total > 0)  # NaN on zero-generation hours, exactly as the average basis does
+    ci.name = "carbon_intensity_gco2_kwh"
+    return ci
+
+
+# Compatibility alias. Allan's PR (origin/main b46978e) added an independent
+# implementation under the name ``marginal_ci_proxy``; tests/test_marginal_proxy.py
+# imports that name. The two agree on every one of the 8,808 real 2019 ISO-NE hours,
+# so the name is aliased onto ``marginal_ci`` rather than keeping two code paths.
+# ``marginal_ci`` is the one that survives because it adds two guarantees his did not:
+#   * it masks zero-generation hours to NaN, exactly as ``carbon_intensity`` does, so
+#     the average and marginal arms schedule over an IDENTICAL feasible set (his
+#     returned 490 there, which would let the two arms see different placeable hours
+#     and break the attribution of the delta to the accounting basis);
+#   * it clips negative generation before summing, matching ``carbon_intensity``.
+# Neither divergence is reachable on 2019 ISO-NE data; both are latent correctness
+# properties worth keeping. See notes/carbon-scheduler-handoff.md section 4.9.
+marginal_ci_proxy = marginal_ci
+
+
 # --- HVAC load (real, offline) ----------------------------------------------
 def load_hvac_jobs(fname: str = "bldg486202_MA_year.parquet", *, flex_hours: int = 6,
                    utc_offset_hours: int = -5):

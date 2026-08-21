@@ -5,6 +5,7 @@ import sys
 import unittest
 from datetime import date
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from cals.acn_sessions import _token
@@ -21,14 +22,17 @@ class AcnSessionTests(unittest.TestCase):
     @patch("cals.acn_sessions.fetch_acn_sessions", return_value=[{"sessionID": "session"}])
     @patch.object(nb_utils, "acn_to_jobs", return_value=["job"])
     def test_ev_jobs_fetches_2019_sessions(self, mock_jobs, mock_fetch) -> None:
-        jobs, source = nb_utils.get_ev_jobs(verbose=False)
+        with TemporaryDirectory() as tmp:
+            data_dir = Path(tmp)
+            with patch.object(nb_utils, "DATA", data_dir):
+                jobs, source = nb_utils.get_ev_jobs(verbose=False)
 
         self.assertEqual(jobs, ["job"])
-        self.assertEqual(source, "ACN-Data caltech (LIVE API)")
+        self.assertEqual(source, "ACN-Data caltech 2019 (LIVE API)")
         mock_fetch.assert_called_once_with(
             date(2019, 1, 1),
             date(2019, 12, 31),
-            cache_dir=nb_utils.DATA / "ev",
+            cache_dir=data_dir / "ev",
         )
 
 
