@@ -54,7 +54,13 @@ FIG.mkdir(exist_ok=True)
 # Real EIA ISO-NE fuel mix begins 2019-01-01, so the whole study aligns to 2019.
 CI_START = "2019-01-01"
 CI_END = "2020-01-02"  # +2-day buffer so job windows near year-end stay priceable
-DEMO_ORIGIN = pd.Timestamp("2019-06-01", tz="UTC")  # EV/AI demo loads land in 2019 too
+# Anchor for the Alibaba trace's RELATIVE timestamps (and the demo EV/AI loads).
+# The trace records seconds from an unspecified epoch, not calendar dates, so an anchor
+# is required to price it against a carbon year. Alibaba states the trace spans "the July
+# and August of 2020" (cluster-trace-gpu-v2020 README), so 2019-07-01 maps it onto the
+# same calendar dates one year earlier: season-faithful rather than arbitrary. The former
+# value of 2019-06-01 placed 34% of the window in June and was not tied to the trace at all.
+DEMO_ORIGIN = pd.Timestamp("2019-07-01", tz="UTC")
 
 # ResStock amy2018 -> 2019 carbon year. +365d for a FULL YEAR (exact day-for-day
 # bijection); the AL one-week slice uses +364d (preserves weekday). Full

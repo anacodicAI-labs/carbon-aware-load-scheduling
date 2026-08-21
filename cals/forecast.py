@@ -4,9 +4,11 @@ Oracle scheduling (what the paper's headline reports) sees the TRUE carbon curve
 A real operator sees only a FORECAST. The *forecast penalty* is how much of the
 saving is lost to imperfect foresight.
 
-    climatology_forecast : predict CI(t) as the mean over all hours sharing the
-                           same (month, hour-of-day) — the "typical" curve. Blind
-                           to today's weather, but a cheap, honest baseline.
+    climatology_forecast : CAUSAL expanding-window climatology. Predicts CI(t)
+                           from the mean of EARLIER hours sharing the same
+                           (month, hour-of-day), never from t itself or later
+                           hours. Blind to today's weather, and now genuinely
+                           out-of-sample in time.
 
     forecast_penalty     : schedule each job on the FORECAST, price it on the
                            TRUE CI, and compare against the oracle (scheduled on
@@ -20,13 +22,115 @@ import pandas as pd
 from cuad.scheduler.jobs import Job, duration_h
 
 
-def climatology_forecast(ci: pd.Series) -> pd.Series:
-    """CI forecast = mean CI for the same (month, hour-of-day) across the series."""
+def climatology_forecast(ci: pd.Series, *, return_tiers: bool = False):
+    """CAUSAL expanding-window climatology: predict CI(t) from EARLIER hours only.
+
+    For each hour t the prediction uses only observations at positions STRICTLY
+    BEFORE t in the series. No hour ever contributes to its own prediction, and
+    no later hour contributes either, so this is a forecast an operator standing
+    at time t could actually have produced.
+
+    Why this replaced the previous implementation. The old version computed the
+    (month, hour-of-day) mean with ``groupby(...).transform("mean")`` over the
+    WHOLE series and then evaluated on that same series. Every hour's prediction
+    therefore contained that hour plus every later hour sharing its (month,
+    hour-of-day) cell -- a retrospective average, not a forecast. It made the
+    reported forecast penalty an optimistic lower bound of unknown size. The
+    leaky version is retained as ``climatology_forecast_insample`` for the sole
+    purpose of reproducing the superseded figure; do not use it for a result.
+
+    Predictor, with a strictly causal fallback chain. For hour t, in order:
+      tier 1  mean of earlier hours with the SAME (month, hour-of-day)  -- the
+              intended predictor, and what almost every hour ends up using;
+      tier 2  mean of earlier hours with the same HOUR-OF-DAY, any month -- used
+              on the first occurrence of each (month, hour) cell, i.e. the first
+              day of each month, when tier 1 has no history yet;
+      tier 3  mean of ALL earlier hours -- used only on the first day of the
+              series, when even tier 2 is empty for that hour-of-day;
+      tier 0  NaN -- only the very first hour of the series, which has no history
+              of any kind. It is left NaN rather than filled, because any fill
+              would have to look forward and would reintroduce the leak.
+
+    A NaN forecast hour is not a hole in the evaluation: ``_cheapest_start``
+    compares candidate window costs with ``<``, and a NaN cost never wins, so a
+    NaN hour is simply never chosen as a placement. A job is dropped only if
+    EVERY window in its range is NaN, which one leading NaN hour cannot cause for
+    any realistic flex setting.
+
+    Parameters
+    ----------
+    ci:
+        Observed hourly carbon intensity, time-ordered.
+    return_tiers:
+        When True, return ``(forecast, tiers)`` where ``tiers`` is an int Series
+        recording which fallback tier produced each hour (0-3 as above), so a
+        caller can report how much of the series relied on a fallback.
+    """
+    idx = pd.DatetimeIndex(ci.index)
+    if not idx.is_monotonic_increasing:
+        raise ValueError(
+            "climatology_forecast requires a time-ordered series: a causal "
+            "expanding window is meaningless if the index is not sorted"
+        )
+    values = ci.to_numpy(dtype=float)
+    months = idx.month.to_numpy()
+    hours = idx.hour.to_numpy()
+
+    out = np.full(len(values), np.nan, dtype=float)
+    tiers = np.zeros(len(values), dtype=int)
+
+    # Running sums over PAST observations only; each is updated after the
+    # prediction for the current hour has been written.
+    sum_mh: dict[int, float] = {}
+    cnt_mh: dict[int, int] = {}
+    sum_h: dict[int, float] = {}
+    cnt_h: dict[int, int] = {}
+    sum_all = 0.0
+    cnt_all = 0
+
+    for i in range(len(values)):
+        cell = int(months[i]) * 100 + int(hours[i])
+        hour = int(hours[i])
+        if cnt_mh.get(cell, 0) > 0:
+            out[i] = sum_mh[cell] / cnt_mh[cell]
+            tiers[i] = 1
+        elif cnt_h.get(hour, 0) > 0:
+            out[i] = sum_h[hour] / cnt_h[hour]
+            tiers[i] = 2
+        elif cnt_all > 0:
+            out[i] = sum_all / cnt_all
+            tiers[i] = 3
+        # else: tier 0, stays NaN
+
+        v = values[i]
+        if not np.isnan(v):  # a NaN observation teaches nothing; skip the update
+            sum_mh[cell] = sum_mh.get(cell, 0.0) + v
+            cnt_mh[cell] = cnt_mh.get(cell, 0) + 1
+            sum_h[hour] = sum_h.get(hour, 0.0) + v
+            cnt_h[hour] = cnt_h.get(hour, 0) + 1
+            sum_all += v
+            cnt_all += 1
+
+    forecast = pd.Series(out, index=ci.index, name="ci_forecast_climatology_causal")
+    if return_tiers:
+        return forecast, pd.Series(tiers, index=ci.index, name="forecast_tier")
+    return forecast
+
+
+def climatology_forecast_insample(ci: pd.Series) -> pd.Series:
+    """LEAKY same-(month, hour-of-day) mean over the WHOLE series. DO NOT REPORT.
+
+    This is the superseded implementation. Each hour's prediction is the mean of
+    every hour sharing its (month, hour-of-day) cell, INCLUDING that hour itself
+    and every later one, so scoring it on the same series it was fitted to is
+    in-sample and yields an optimistic penalty. It is kept only so the previously
+    published figure remains reproducible and the correction is auditable.
+    Use ``climatology_forecast`` for anything reported.
+    """
     idx = pd.DatetimeIndex(ci.index)
     grp = pd.Series(ci.to_numpy(dtype=float), index=pd.MultiIndex.from_arrays([idx.month, idx.hour]))
     clim = grp.groupby(level=[0, 1]).transform("mean")
-    out = pd.Series(clim.to_numpy(), index=ci.index, name="ci_forecast_climatology")
-    return out
+    return pd.Series(clim.to_numpy(), index=ci.index, name="ci_forecast_climatology_insample")
 
 
 def _cheapest_start(job: Job, ci: pd.Series, dur: int):

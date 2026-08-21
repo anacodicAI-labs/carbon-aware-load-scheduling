@@ -47,4 +47,8 @@ from .ai_loads import (  # noqa: E402,F401
     parse_alibaba_trace,
     uncapped_alibaba_costs,
 )
-from .forecast import climatology_forecast, forecast_penalty  # noqa: E402,F401
+from .forecast import (  # noqa: E402,F401
+    climatology_forecast,
+    climatology_forecast_insample,  # LEAKY, superseded; kept only for audit
+    forecast_penalty,
+)
