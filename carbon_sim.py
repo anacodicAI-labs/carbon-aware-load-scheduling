@@ -63,8 +63,9 @@ REDATE = pd.Timedelta(days=364)  # 52 weeks: preserves season and weekday
 # cooling hour on a flat profile and sits only 2.66x its own median (so it
 # binds), whereas the MA heat-pump buildings peak in single January hours that
 # are ~85-89% electric-resistance backup and sit 15.8-25.2x above their own
-# median, where a cap at the peak is effectively non-binding. Peak is therefore
-# retained only as a labeled non-binding endpoint of the sweep.
+# median, where a cap at the peak is very loose. Peak is retained as the loosest
+# swept cap -- NOT as a non-binding endpoint: even there the greedy-vs-optimal gap
+# is 0.46 pp and 506 jobs still fall back, so the cap is doing work.
 #
 # Reconciliation with the existing AL numbers: the old cap (observed peak,
 # 2.761 kW) is 2.66x the AL week's median active load, so the working cap sits in
@@ -156,12 +157,13 @@ def cap_grid(jobs: list[Job]) -> list[tuple[str, float]]:
     """Cap sweep for a job pool: k x median active load, plus the peak endpoint.
 
     Returns (label, cap_kw) pairs in sweep order. The final entry is the observed
-    peak, labeled as the non-binding endpoint: it is reported for continuity with
-    the earlier AL-week numbers, not as a working cap (see CAP_SWEEP_K).
+    peak. It is NOT non-binding: at the peak cap the greedy-vs-optimal gap is still
+    0.46 pp and 506 jobs fall back, so it is reported as the loosest swept cap, not
+    as an unconstrained endpoint (see CAP_SWEEP_K).
     """
     med = median_active_kw(jobs)
     grid = [(f"{k:g}x med", round(k * med, 6)) for k in CAP_SWEEP_K]
-    grid.append(("peak (non-binding)", round(max(j.power_kw for j in jobs), 6)))
+    grid.append(("peak", round(max(j.power_kw for j in jobs), 6)))
     return grid
 
 

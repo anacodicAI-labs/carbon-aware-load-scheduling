@@ -9,6 +9,12 @@ fixed cap (3 x median active load -- a physical power limit, so it is NOT
 re-derived per basis). Only the accounting basis changes. Nothing is tuned.
 
 Runtime ~4 min; the flex-6 average-basis MILP dominates at ~95 s.
+
+SIGN CONVENTION: delta_pp = Savings_average - Savings_marginal, matching the
+manuscript (Section 4.9) and notebook 04 cell `ma-average-marginal-run`. A
+POSITIVE delta therefore means the marginal basis LOWERS the attainable saving.
+This file previously used the opposite sign; only the sign changed, never a
+magnitude.
 """
 from __future__ import annotations
 
@@ -113,7 +119,7 @@ def main() -> None:
             rows.append(cell)
 
     sweep = pd.DataFrame(rows)
-    sweep["delta_pp"] = sweep["sav_marginal"] - sweep["sav_average"]
+    sweep["delta_pp"] = sweep["sav_average"] - sweep["sav_marginal"]
     emit("greedy_savings_sweep", sweep[
         ["cap", "flex_h", "sav_average", "sav_marginal", "delta_pp",
          "sav_marginal_of_avg_schedule"]].round(3))
@@ -134,7 +140,7 @@ def main() -> None:
             r[f"sav_{label}"] = U.savings_pct(b, o["total_gco2"])
             r[f"status_{label}"] = o.get("status")
             print(f"  MILP flex{f} {label}: {r[f'sav_{label}']:.2f}%  ({time.time() - t:.0f}s)")
-        r["delta_pp"] = r["sav_marginal"] - r["sav_average"]
+        r["delta_pp"] = r["sav_average"] - r["sav_marginal"]
         milp.append(r)
     emit(f"milp_savings_cap{WORKING_CAP_K:g}x", pd.DataFrame(milp).round(3))
 
@@ -155,7 +161,7 @@ def main() -> None:
             row[f"base_{label}"] = b
             row[f"avoided_{label}"] = b - tot
             row[f"sav_{label}"] = U.savings_pct(b, tot) if b else 0.0
-        row["delta_pp"] = row["sav_marginal"] - row["sav_average"]
+        row["delta_pp"] = row["sav_average"] - row["sav_marginal"]
         row["oil_hours"] = int(om[om.index.month == m].sum())
         mrows.append(row)
     mo = pd.DataFrame(mrows)
@@ -173,7 +179,7 @@ def main() -> None:
         r = {"season": lbl, "oil_hours": int(sub["oil_hours"].sum())}
         for label, _ in bases:
             r[f"sav_{label}"] = 100.0 * sub[f"avoided_{label}"].sum() / sub[f"base_{label}"].sum()
-        r["delta_pp"] = r["sav_marginal"] - r["sav_average"]
+        r["delta_pp"] = r["sav_average"] - r["sav_marginal"]
         srows.append(r)
     emit("seasonal_cap3x_flex6_energy_weighted", pd.DataFrame(srows).round(3))
 
