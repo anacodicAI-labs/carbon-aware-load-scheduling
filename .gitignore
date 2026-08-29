@@ -12,3 +12,6 @@ data/carbon/
 data/ev/
 data/ai/*.csv
 data/ai/*.tar.gz
+
+# macOS finder metadata
+.DS_Store
