@@ -1,4 +1,4 @@
-"""Regenerate 04b, 04c, 04d WITHOUT in-figure titles (MDPI: text goes in the caption).
+"""Regenerate 04c and 04d WITHOUT in-figure titles (04b is no longer generated here) (MDPI: text goes in the caption).
 
 04b is redrawn from results/capacity_sweep.csv (the committed HVAC MILP sweep) rather
 than re-solving it -- same numbers, ~15 min cheaper. 04c and 04d are recomputed live;
@@ -112,7 +112,10 @@ def main():
     hv, rh, _ = U.load_hvac_jobs(flex_hours=6)
     base = U.do_nothing_gco2(hv, rh, ci)
     uncapped = U.savings_pct(base, schedule(hv, ci, baseline_hours=rh)["total_gco2"])
-    fig04b(uncapped); fig04c(ci, hv, rh); fig04d(mix, hv, rh)
+    # fig04b() intentionally NOT called: 04b is now the combined single-panel
+    # HVAC+batch figure, on the shared k = M / median-aggregate axis, owned by
+    # scripts/fig_savings_vs_capacity.py. Retained for reference.
+    fig04c(ci, hv, rh); fig04d(mix, hv, rh)
 
 
 if __name__ == "__main__":

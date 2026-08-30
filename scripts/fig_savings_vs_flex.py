@@ -1,4 +1,8 @@
-"""Generator for figures/04a_savings_vs_flex.png -- savings vs deadline slack, all three loads.
+"""Generator for figures/04e_ai_savings_sweep.png -- savings vs deadline slack, all three loads.
+
+NOTE: the filename is historical (it held the two-panel AI sweep). The content is now
+the three-load flexibility figure; the old absolute-tCO2-vs-GPU-power panel it replaced
+is still regenerable from restore_figures.fig04e().
 
 Merges the old 04a (HVAC only) with panel (e1) of the old 04e (batch only), and adds
 EV as a third curve.
@@ -147,7 +151,7 @@ def main() -> None:
             transform=ax.transAxes, ha="right", va="bottom", fontsize=7.8,
             style="italic", color="0.35")
     fig.tight_layout()
-    U.savefig(fig, "04a_savings_vs_flex.png")
+    U.savefig(fig, "04e_ai_savings_sweep.png")
 
 
 if __name__ == "__main__":

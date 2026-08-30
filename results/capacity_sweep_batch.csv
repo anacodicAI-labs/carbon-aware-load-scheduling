@@ -1,8 +1,8 @@
 label,k,M_kW,greedy_pct,optimal_pct,gap_pp,t_greedy_s,t_milp_s,milp_status,degenerate_for_fleet
-0.5x med,0.5,0.2,0.0019089777250657447,,,49.41261386871338,,infeasible_on_this_machine_OOM_above_n~32000,True
-1x med,1.0,0.4,0.003977133270956366,,,51.95061802864075,,infeasible_on_this_machine_OOM_above_n~32000,True
-2x med,2.0,0.8,0.00885361213760809,,,50.18844795227051,,infeasible_on_this_machine_OOM_above_n~32000,True
-3x med,3.0,1.2,0.012536908492340572,,,49.59772181510925,,infeasible_on_this_machine_OOM_above_n~32000,True
-4x med,4.0,1.6,0.01628354442974456,,,49.64454102516174,,infeasible_on_this_machine_OOM_above_n~32000,True
-6x med,6.0,2.4,0.023864449450669196,,,49.50615191459656,,infeasible_on_this_machine_OOM_above_n~32000,True
-uncapped,,,3.212238534751544,,,48.08271408081055,,infeasible_on_this_machine_OOM_above_n~32000,False
+0.5x med,0.5,126.915,1.2185247486017774,,,63.93121099472046,,infeasible_on_this_machine_OOM_above_n~32000,False
+1x med,1.0,253.83,2.2058257921699522,,,69.69844603538513,,infeasible_on_this_machine_OOM_above_n~32000,False
+2x med,2.0,507.66,2.9661627612911188,,,63.031968116760254,,infeasible_on_this_machine_OOM_above_n~32000,False
+3x med,3.0,761.49,3.183800947609702,,,66.08410477638245,,infeasible_on_this_machine_OOM_above_n~32000,False
+4x med,4.0,1015.32,3.212238534751544,,,66.55436682701111,,infeasible_on_this_machine_OOM_above_n~32000,False
+6x med,6.0,1522.98,3.212238534751544,,,63.816142082214355,,infeasible_on_this_machine_OOM_above_n~32000,False
+uncapped,,,3.212238534751544,,,49.54309582710266,,infeasible_on_this_machine_OOM_above_n~32000,False

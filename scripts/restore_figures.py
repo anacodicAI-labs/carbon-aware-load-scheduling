@@ -136,11 +136,10 @@ def main():
     hvac_df = pd.read_parquet(ROOT / "data/hvac/bldg486202_MA_year.parquet").copy()
     hvac_df["timestamp"] = pd.to_datetime(hvac_df["timestamp"]) + MA_REDATE
 
-    fig02(ev_jobs, hvac_jobs)
-    print()
     fig04a(ci, hvac_df)
-    print()
-    fig04e()
+    # fig02() and fig04e() intentionally NOT called: 02 is now the three-load ECDF
+    # (scripts/fig_slack_ecdf.py) and 04e is the three-load flexibility figure
+    # (scripts/fig_savings_vs_flex.py). Both retained for reference.
 
 
 if __name__ == "__main__":

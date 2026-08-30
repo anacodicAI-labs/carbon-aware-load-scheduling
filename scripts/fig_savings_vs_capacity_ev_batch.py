@@ -12,7 +12,7 @@ is OOM-killed above ~32,000 jobs on this machine; the batch arm is 227,529 jobs,
 no exact optimum exists for it and the greedy/MILP gap cannot be drawn. The k x
 median caps are also degenerate here: median_active_kw is the median JOB power,
 which equals median hourly SITE load only for HVAC (one block per hour). Batch runs
-~139 jobs/hour, so a 3x median cap of 1.2 kW is ~635x tighter than 3x the median
+~139 job ARRIVALS per active hour (~664 concurrent), so a 3x median cap of 1.2 kW is ~635x tighter than 3x the median
 aggregate load (253.8 kW) and admits about three jobs per hour out of the fleet.
 Those rows measure forced fallback, not scheduling, and are shaded as such.
 """
