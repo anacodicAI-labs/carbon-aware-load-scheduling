@@ -308,8 +308,8 @@ def sweep_row(flex: int, e: dict) -> None:
 
 
 # Load-bearing numbers the paper reports. If wiring changes move any of these,
-# STOP -- a silent drift here is a wrong number in the manuscript. Values are the
-# regenerated handoff truth (notes/carbon-scheduler-handoff.md, section 2).
+# STOP -- a silent drift here is a wrong reported number. Values are the
+# regression-gated reference truth for the reported results.
 ANCHOR_HVAC_UNCAPPED = {0: 0.00, 1: 1.85, 2: 3.39, 4: 5.93, 6: 8.67}
 ANCHOR_HVAC_F6_CAPPED = {"ISO-NE": 7.22, "CAISO": 15.36}
 ANCHOR_PEAK_KW = 2.761

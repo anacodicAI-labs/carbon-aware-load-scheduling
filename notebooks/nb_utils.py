@@ -271,7 +271,7 @@ def marginal_ci(mix: pd.DataFrame, *, threshold_mwh: float = 0.0,
 #     and break the attribution of the delta to the accounting basis);
 #   * it clips negative generation before summing, matching ``carbon_intensity``.
 # Neither divergence is reachable on 2019 ISO-NE data; both are latent correctness
-# properties worth keeping. See notes/carbon-scheduler-handoff.md section 4.9.
+# properties worth keeping.
 marginal_ci_proxy = marginal_ci
 
 

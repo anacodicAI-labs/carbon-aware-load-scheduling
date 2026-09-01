@@ -1,6 +1,6 @@
 """Section 4.9 driver: average- vs marginal-basis emissions accounting.
 
-Reproduces every number in notes/carbon-scheduler-handoff.md, section 4.9.
+Reproduces the average- vs marginal-basis accounting numbers.
 Run from anywhere:  python scripts/avg_vs_marginal.py
 
 Both arms price the SAME real EIA ISO-NE 2019 fuel mix, the SAME 8363 HVAC jobs
