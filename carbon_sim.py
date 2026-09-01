@@ -1,29 +1,25 @@
-"""Phase B: optimal (carbon-minimising) vs do-nothing scheduling over real EIA carbon.
+"""Shared scheduling configuration, helpers, and a fast regression self-test.
 
-Framing: the carbon-aware arm is OPTIMAL, not "greedy". greedy.py's own docstring
-notes that with no shared-capacity constraint the jobs never interact, so placing
-each at its own cheapest feasible slot is the per-job global optimum and the slack
-sort has no effect. So this measures optimal vs a do-nothing baseline.
+This module is the common backbone the notebooks and the ``scripts/`` import: it
+defines the capacity-sweep grid (``CAP_SWEEP_K``, ``WORKING_CAP_K``), the HVAC
+re-date offset (``MA_REDATE``), the median-active-load helper, and the
+``evaluate`` driver that prices a schedule against the carbon signal.
 
-The do-nothing baseline differs by workload, on purpose:
+Run directly (``python carbon_sim.py``) it executes ``check_anchors()``, a fast
+regression gate that reproduces load-bearing reference numbers on a small
+committed one-week sample, so a wiring change that silently moves a result is
+caught before it reaches a figure. The full paper analysis (Massachusetts
+heat-pump buildings over all of 2019) lives in the notebooks; this gate uses a
+one-week sample purely so it runs in seconds.
+
+The carbon-aware arm is optimal, not merely greedy: with no shared allocation
+budget the jobs never interact, so each job's cheapest feasible slot is the
+per-job optimum. The do-nothing baseline is workload-specific:
 - EV : earliest_start is a real plug-in time, so "run at earliest_start" is the
        honest do-nothing (FIFO) placement.
-- HVAC: the honest do-nothing is the hour the load ACTUALLY ran in the NREL data
-       (nrel_to_jobs returns that as run_hours). It must NOT be priced at
-       earliest_start, because earliest_start = hour - flex_hours drifts earlier
-       as flex_hours grows, which would move the control arm.
-
-Workloads:
-- EV  : real ACN-Data caltech sessions, connect Jul 14-20 2019.
-- HVAC: NREL ResStock Alabama building, native Jul 2018, shifted +364 days to
-        Jul 2019 (keeps season AND weekday: Sun 2018-07-15 -> Sun 2019-07-14).
-- Carbon: real EIA ISO-NE fuel mix -> carbon_intensity(), with buffer so no job
-        edge falls off the series at any flex level.
-
-LIMITATION (stated, not worked around): HVAC load is driven by 2018 weather but
-priced against 2019 grid carbon (EIA's ISO-NE hourly fuel-type series does not
-reach back to Jul 2018). EV (California), HVAC (Alabama) and carbon (New England)
-are geographically mismatched; this is a methods demonstration, not a deployment.
+- HVAC: the honest do-nothing is the hour the load ACTUALLY ran in the source
+       data (not the earliest feasible hour, which would drift with the
+       flexibility window and move the control arm).
 """
 from __future__ import annotations
 
@@ -321,7 +317,7 @@ def _pct_all(e: dict) -> float:
 
 
 def check_anchors() -> None:
-    """Regression gate: reproduce the handoff's load-bearing numbers or STOP.
+    """Regression gate: reproduce the pipeline's load-bearing reference numbers or STOP.
 
     Prints each anchor's computed value next to its expected value and raises
     SystemExit on the first mismatch, so a commit can be gated on `python

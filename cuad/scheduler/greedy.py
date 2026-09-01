@@ -543,7 +543,7 @@ def schedule_preemptible(
     }
 
 
-# TODO(Task 7): greedy and fifo may mark different jobs infeasible; compare over the shared placed set in the simulation.
+# greedy and fifo may mark different jobs infeasible; evaluate() compares only over the set both arms place.
 def fifo_baseline(jobs: list[Job], carbon: pd.Series) -> dict:
     """Naive control: place every feasible job at its earliest_start, ignoring carbon.
 
