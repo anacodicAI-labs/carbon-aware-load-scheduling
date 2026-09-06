@@ -1,4 +1,4 @@
-"""Generator for figures/04e_ai_savings_sweep.png -- savings vs deadline slack, all three loads.
+"""Generator for figures/savings_vs_slack_all_loads.png -- savings vs deadline slack, all three loads.
 
 NOTE: the filename is historical (it held the two-panel AI sweep). The content is now
 the three-load flexibility figure; the old absolute-tCO2-vs-GPU-power panel it replaced
@@ -151,7 +151,7 @@ def main() -> None:
             transform=ax.transAxes, ha="right", va="bottom", fontsize=7.8,
             style="italic", color="0.35")
     fig.tight_layout()
-    U.savefig(fig, "04e_ai_savings_sweep.png")
+    U.savefig(fig, "savings_vs_slack_all_loads.png")
 
 
 if __name__ == "__main__":

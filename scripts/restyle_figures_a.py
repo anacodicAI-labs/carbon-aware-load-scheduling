@@ -82,7 +82,7 @@ def fig04e():
             f"flex{int(f)}={v:.2f}" for f, v in zip(g["flex_hours"], t)))
     ax.set_xlabel("assigned flexibility (hours)"); ax.set_ylabel("avoided emissions (tCO2)")
     ax.grid(alpha=0.25, lw=0.6); ax.legend(title="assumed power", fontsize=9)
-    fig.tight_layout(); U.savefig(fig, "04e_ai_savings_sweep.png")
+    fig.tight_layout(); U.savefig(fig, "04e_tco2_by_gpu_power_only.png")
 
 
 def fig05(ci, hv, rh_hv):
