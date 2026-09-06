@@ -15,3 +15,5 @@ data/ai/*.tar.gz
 
 # macOS finder metadata
 .DS_Store
+paper_current.tex
+bibs.bib
