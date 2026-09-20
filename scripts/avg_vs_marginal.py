@@ -127,6 +127,30 @@ def main() -> None:
         ["cap", "flex_h", "base_gco2_average", "avoided_gco2_average",
          "base_gco2_marginal", "avoided_gco2_marginal"]].round(1))
 
+    # ------------------------------------------ 3b. marginal-rule threshold
+    # The tau sweep above reports HOUR COUNTS only, which cannot show whether a
+    # reported saving depends on what "generating" is taken to mean. Carry tau
+    # through to the savings at the headline operating point.
+    assign_avg_head = schedule(
+        jobs6, ci_avg, capacity_kw=cap_kw, baseline_hours=rh6)["assignments"]
+    thr = []
+    for t in (0.0, 1.0, 5.0, 10.0, 50.0, 100.0):
+        ci_t = U.marginal_ci(mix, threshold_mwh=t)
+        b_t = U.do_nothing_gco2(jobs6, rh6, ci_t)
+        sched_t = schedule(jobs6, ci_t, capacity_kw=cap_kw, baseline_hours=rh6)
+        cross_t = sum(U.price_at(job, assign_avg_head[job.job_id], ci_t) for job in jobs6)
+        thr.append({
+            "threshold_mwh": t,
+            "oil_hours": int(U.oil_generating_hours(mix, threshold_mwh=t)
+                             .reindex(ci_avg.index, fill_value=False)[cal19].sum()),
+            "sav_marginal": U.savings_pct(b_t, sched_t["total_gco2"]),
+            "sav_marginal_of_avg_schedule": U.savings_pct(b_t, cross_t),
+        })
+    threshold = pd.DataFrame(thr)
+    threshold["mismatch_pp"] = (
+        threshold["sav_marginal"] - threshold["sav_marginal_of_avg_schedule"])
+    emit(f"threshold_sensitivity_savings_cap{WORKING_CAP_K:g}x_flex6", threshold.round(3))
+
     # Exact MILP at the working cap. Uncapped MILP is omitted: it provably equals
     # greedy when nothing binds (carbon_sim.check_anchors, anchor 4).
     milp = []
@@ -209,11 +233,48 @@ def main() -> None:
               f"flat windows = {int((spans < 1e-9).sum())} "
               f"({100 * (spans < 1e-9).mean():.1f}%)")
 
+    # ------------------------------------- 6. cross-basis, all three buildings
+    # Scoring each basis against its own signal compares two ratios with
+    # different denominators: the do-nothing baseline differs by ~2x between the
+    # signals, so the difference of the percentages measures how much headroom
+    # each signal exposes, not the cost of the accounting choice. Score the
+    # unchanged baseline, the average-optimized schedule and the
+    # marginal-optimized schedule against the one marginal reference instead.
+    # The cap is re-derived per building, since it is a multiple of that
+    # building's own median active load.
+    bldg = []
+    for fname, tag in (("bldg486202_MA_year.parquet", "486202 (headline)"),
+                       ("bldg286081_MA_year.parquet", "286081"),
+                       ("bldg274807_MA_year.parquet", "274807")):
+        jb, rhb = U.load_hvac_jobs(fname, flex_hours=6)[:2]
+        cap_b = round(WORKING_CAP_K * median_active_kw(jb), 6)
+        base_avg = U.do_nothing_gco2(jb, rhb, ci_avg)
+        base_mar = U.do_nothing_gco2(jb, rhb, ci_mar)
+        sch_avg = schedule(jb, ci_avg, capacity_kw=cap_b, baseline_hours=rhb)
+        sch_mar = schedule(jb, ci_mar, capacity_kw=cap_b, baseline_hours=rhb)
+        cross_b = sum(U.price_at(job, sch_avg["assignments"][job.job_id], ci_mar)
+                      for job in jb)
+        bldg.append({
+            "building": tag,
+            "n_jobs": len(jb),
+            "cap_kw": cap_b,
+            "sav_avg_own_ruler": U.savings_pct(base_avg, sch_avg["total_gco2"]),
+            "sav_avg_sched_on_marginal": U.savings_pct(base_mar, cross_b),
+            "sav_marginal_optimized": U.savings_pct(base_mar, sch_mar["total_gco2"]),
+        })
+    buildings = pd.DataFrame(bldg)
+    buildings["mismatch_pp"] = (
+        buildings["sav_marginal_optimized"] - buildings["sav_avg_sched_on_marginal"])
+    emit(f"cross_basis_by_building_cap{WORKING_CAP_K:g}x_flex6", buildings.round(3))
+
     out = ROOT / "results"
     sweep.drop(columns=["assign_average", "assign_marginal"]).to_csv(
         out / "avg_vs_marginal_sweep.csv", index=False)
     mo.to_csv(out / "avg_vs_marginal_monthly.csv", index=False)
-    print(f"\nwrote {out}/avg_vs_marginal_sweep.csv and avg_vs_marginal_monthly.csv")
+    threshold.to_csv(out / "avg_vs_marginal_threshold.csv", index=False)
+    buildings.to_csv(out / "avg_vs_marginal_buildings.csv", index=False)
+    print(f"\nwrote {out}/avg_vs_marginal_sweep.csv, avg_vs_marginal_monthly.csv,"
+          f" avg_vs_marginal_threshold.csv and avg_vs_marginal_buildings.csv")
     print(f"total runtime {time.time() - t0:.0f}s")
 
 

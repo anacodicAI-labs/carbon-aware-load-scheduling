@@ -48,6 +48,17 @@ DATA = ROOT / "data"
 FIG = ROOT / "figures"
 FIG.mkdir(exist_ok=True)
 
+# The notebooks call load_dotenv themselves, but scripts/ did not, so a CLI run
+# saw an empty environment and raised "EIA_API_KEY is not set" despite a
+# populated .env. Loading here covers every caller, since get_fuel_mix reads the
+# variable from this module. Existing environment variables win.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(ROOT / ".env", override=False)
+except ImportError:
+    pass
+
 # The committed HVAC parquet is calendar-year 2018 in local standard time. We
 # build/fetch carbon over a slightly wider window so every job's flex window is
 # fully priceable (a job near Jan 1 reaches back into Dec 31).
@@ -210,7 +221,11 @@ def ci_from_factors(mix: pd.DataFrame, factors: dict) -> pd.Series:
 #
 # The rule implemented here is the standard coarse merit-order approximation for
 # ISO-NE: gas combined-cycle is marginal in the large majority of hours, and oil
-# steam/CT units are called only at winter peaks, where they set the margin.
+# steam/CT units are dispatched only under peak conditions, where they set the
+# margin instead. On the real 2019 series those peaks are predominantly SUMMER,
+# not winter as a heating-dominated intuition suggests: oil is on the margin in
+# 1945 of 8760 hours (22.2%), of which 330 fall in July and 293 in August
+# against 142 in January (JJA 719, SON 499, DJF 479, MAM 248).
 MARGINAL_OIL_GCO2_KWH = 650.0  # oil on the margin (same lifecycle value as FACTORS["OIL"])
 MARGINAL_GAS_GCO2_KWH = 490.0  # gas CC on the margin (same lifecycle value as FACTORS["NG"])
 
