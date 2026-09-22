@@ -1,0 +1,4 @@
+raw=10617 reasons={'valid': 9827, 'missing_timestamp': 466, 'done_after_disconnect': 317, 'done_not_after_connect': 7} hourly_kept=8507 valid_but_rejected_by_hour_grid=1479
+hourly zero-slack sessions=2495, of which real slack < 1 min: 979
+exact continuous-time saving=1.813% over 9827 sessions | paper's hourly method=1.872% over 8507
+wrote /Users/rajansaha/carbon-aware-load-scheduling/results/r1_ev_exact_summary.csv

@@ -1,0 +1,7 @@
+batch jobs=732,691 median aggregate=335.4 kW peak/median=2.17
+  k=2.0  greedy=3.5002%  (122.5s)
+  k=3.0  greedy=3.7744%  (128.0s)
+  k=4.0  greedy=3.9213%  (131.2s)
+  k=6.0  greedy=3.9692%  (111.5s)
+  k=None  greedy=3.9692%  (92.4s)
+wrote /Users/rajansaha/carbon-aware-load-scheduling/results/r1_batch_unified.csv  -- uncapped row must equal ai_sweep.csv flex-6 (3.9692%) on real data

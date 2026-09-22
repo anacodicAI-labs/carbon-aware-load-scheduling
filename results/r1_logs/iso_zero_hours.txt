@@ -1,0 +1,52 @@
+== source integrity ==
+raw xlsx rows=17835  exported csv rows=17835  identical (date,hour,fuel,share,rate): False
+
+== (a) percent-marginal sum per hour (raw xlsx) ==
+hours=8755 min=1.000000 max=1.000000 outside [0.99,1.01]=0
+
+== (b) hours with CI_ISO == 0 ==
+zero-rate hours: 228 of 8755 hours in the file = 2.60%
+fuel types in zero-rate hours: rows, hours present, mean share when present, total share-hours
+                       rows  share_sum  hours_present  mean_share_when_present
+fuel type                                                                     
+Pumped Storage Demand   118   103.8496            118                   0.8801
+Pumped Storage           99    94.7512             99                   0.9571
+Hydro                    48    15.4862             48                   0.3226
+Wind                     81    12.9964             81                   0.1604
+Demand Response           5     0.8333              5                   0.1667
+Import                    1     0.0833              1                   0.0833
+co2 rate values in zero-hour rows: [np.int64(0)]
+fuel types with nonzero co2 rate anywhere in the file (min rate by fuel):
+                        min   max
+fuel type                        
+Coal                   2119  3375
+Demand Response           0     0
+Gas                     641  2179
+Hydro                     0     0
+Import                    0     0
+Oil                     891  3513
+Other                     0  4679
+Pumped Storage            0     0
+Pumped Storage Demand     0     0
+Wind                      0     0
+zero hours that contain a Gas row: 0
+zero hours with no Gas row whose previous AND next hour have Gas: 138; previous OR next: 214
+5-min sheet, same zero hours: present=228  with any Gas interval=0  with nonzero load-weighted rate=0
+5-min sheet, all hours with zero load-weighted rate: 228
+
+== (c) share of ISO-optimized saving from jobs placed in zero-rate hours ==
+scheduling series: zero-rate hours in local-2019 = 229 of 8760 = 2.61%
+  M=3x median: n=8353 saving=28.935% | jobs placed in zero-rate hours=943 | share of saving from them=15.7%
+  uncapped: n=8353 saving=65.768% | jobs placed in zero-rate hours=1984 | share of saving from them=30.0%
+
+== note on "identical: False" above ==
+Column-by-column check: date, hour, fuel type, co2 rate are exactly equal; percent marginal differs
+by at most 1.1e-16 (float round-trip through CSV). The export is faithful to the xlsx.
+
+== verdict ==
+(a) every hour's shares sum to 1.000000 (0 hours outside 0.99-1.01).
+(b) the 228 zero-rate hours contain only zero-rate fuel rows (Pumped Storage Demand, Pumped Storage,
+    Hydro, Wind, Demand Response, Import). 138 lack a Gas row that both neighbours have, but the
+    independent 5-minute sheet shows no Gas interval and a zero load-weighted rate in all 228 of
+    those hours (and exactly 228 zero hours overall), so the missing Gas is in the source data, not
+    a parsing artifact. Zero hours are genuine.

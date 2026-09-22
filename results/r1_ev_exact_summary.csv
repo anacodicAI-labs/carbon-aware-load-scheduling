@@ -1,0 +1,2 @@
+n_sessions_in,n_priceable,baseline_gco2,optimal_gco2,savings_pct,median_real_slack_h,share_slack_lt_1min,share_slack_lt_15min,share_shifted,n_raw,n_hourly_kept,hourly_grid_savings_pct,valid_but_rejected_by_hour_grid,hourly_zero_slack,hourly_zero_slack_real_lt_1min,excluded_missing_timestamp,excluded_done_after_disconnect,excluded_done_not_after_connect
+9827,9827,24423776.427459035,23981018.99451348,1.8128131587700427,2.0405555555555557,0.21054238322987687,0.2807570977917981,0.6499440317492622,10617,8507,1.8724743317353492,1479,2495,979,466,317,7

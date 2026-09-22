@@ -1,0 +1,5 @@
+cap,arm,n_shared,oracle_pct,forecast_pct,penalty_pp,retention_pct,forecast_jobs_dirtier_than_baseline_on_true_CI,forecast_issue_time
+uncapped,greedy,8363,12.698599364163242,11.235971582044911,1.4626277821183304,88.4819755299469,940,job release r_j = metered hour - flex
+uncapped,milp,8363,12.698599364163242,11.235971582044911,1.4626277821183304,88.4819755299469,940,job release r_j = metered hour - flex
+M=3x median,greedy,8363,7.279863996445989,6.596970663475353,0.6828933329706359,90.61942182842945,806,job release r_j = metered hour - flex
+M=3x median,milp,8363,8.292307491851927,7.583652058914243,0.7086554329376842,91.45406229045398,639,job release r_j = metered hour - flex

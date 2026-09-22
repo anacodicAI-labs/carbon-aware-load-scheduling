@@ -1,0 +1,10 @@
+carbon: EIA ISO-NE (cached real pull) | jobs=8363 median=0.4230 kW observed total peak=6.6670 kW
+  M=2x median                                      opt=5.607% (bound 5.615%) gap=8.39e-05 status=0  (14s)
+  M=3x median                                      opt=8.292% (bound 8.299%) gap=6.80e-05 status=0  (96s)
+  M=4x median                                      opt=9.132% (bound 9.140%) gap=8.54e-05 status=0  (539s)
+  M=6x median                                      opt=10.437% (bound 10.444%) gap=7.72e-05 status=0  (200s)
+  M=observed peak                                  opt=12.415% (bound 12.417%) gap=3.01e-05 status=0  (4s)
+  uncapped                                         opt=12.699% (bound 12.699%) gap=0.00e+00 status=0  (4s)
+  total<=observed peak (no M)                      opt=12.189% (bound 12.194%) gap=5.70e-05 status=0  (296s)
+  M=3x median AND total<=observed peak             opt=8.290% (bound 8.298%) gap=9.18e-05 status=0  (104s)
+wrote /Users/rajansaha/carbon-aware-load-scheduling/results/r1_hvac_capacity.csv

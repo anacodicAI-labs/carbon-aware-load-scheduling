@@ -1,0 +1,6 @@
+information set: {'issue_time': 'job release r_j = metered hour - flex', 'latest_observation_used': 'tiers 1-2: h - 24 h, i.e. at least 12 h before release', 'tier_share_2019': {1: 0.96712, 2: 0.03014, 3: 0.00263, 0: 0.00011}, 'jobs_whose_window_touches_tier0_or_tier3': 25}
+  uncapped         greedy oracle=12.699% forecast=11.236% penalty=1.463 pp retention=88.5%
+  uncapped         milp   oracle=12.699% forecast=11.236% penalty=1.463 pp retention=88.5%
+  M=3x median      greedy oracle=7.280% forecast=6.597% penalty=0.683 pp retention=90.6%
+  M=3x median      milp   oracle=8.292% forecast=7.584% penalty=0.709 pp retention=91.5%
+wrote /Users/rajansaha/carbon-aware-load-scheduling/results/r1_forecast_capped.csv  (baseline over all jobs = 1240119.5 gCO2)

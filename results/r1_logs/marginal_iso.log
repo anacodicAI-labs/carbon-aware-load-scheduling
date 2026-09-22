@@ -1,0 +1,11 @@
+proxy validation: {'hours_compared': 8756, 'proxy_oil_marginal_share': 0.222, 'r_proxy_vs_iso': 0.074, 'r_avg_vs_iso': 0.189, 'iso_mean_gco2_kwh': 325.891, 'iso_mean_proxy_oil_hours': 344.223, 'iso_mean_proxy_gas_hours': 320.656}
+jobs=8363 kept=8353 dropped (window reaches an hour without ISO value)=10
+  M=3x median avg_optimized: 3.624%
+  M=3x median proxy_optimized: 0.671%
+  M=3x median iso_optimized: 28.935%
+  M=3x median: baseline=0 | avg-opt=3.624% proxy-opt=0.671% iso-opt=28.935% (all on the ISO-NE ruler)
+  uncapped avg_optimized: 7.053%
+  uncapped proxy_optimized: 1.168%
+  uncapped iso_optimized: 65.768%
+  uncapped: baseline=0 | avg-opt=7.053% proxy-opt=1.168% iso-opt=65.768% (all on the ISO-NE ruler)
+wrote /Users/rajansaha/carbon-aware-load-scheduling/results/r1_marginal_iso.csv

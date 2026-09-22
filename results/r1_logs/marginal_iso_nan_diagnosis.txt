@@ -1,0 +1,11 @@
+ISO NaN hours after reindex+fill: 46 (head 2019-01-01 00:00:00+00:00..2020-01-01 06:00:00+00:00, tail from 2020-01-01 07:00:00+00:00)
+jobs in cmd_marginal_iso 'ok' set: 8363; whose window touches an ISO-NaN hour: 10
+  [as run, n=8363] M=3x median avg_optimized: jobs placed in ISO-NaN hours = 5
+  [as run, n=8363] M=3x median proxy_optimized: jobs placed in ISO-NaN hours = 0
+  [as run, n=8363] M=3x median iso_optimized: jobs placed in ISO-NaN hours = 0
+  [as run, n=8363] uncapped avg_optimized: jobs placed in ISO-NaN hours = 5
+  [as run, n=8363] uncapped proxy_optimized: jobs placed in ISO-NaN hours = 5
+  [as run, n=8363] uncapped iso_optimized: jobs placed in ISO-NaN hours = 0
+VARIANT (diagnostic): exclude jobs whose window touches an ISO-NaN hour
+  n=8353 M=3x median: avg_optimized=3.624%, proxy_optimized=0.671%, iso_optimized=28.935%, avg_retained=12.5%
+  n=8353 uncapped: avg_optimized=7.053%, proxy_optimized=1.168%, iso_optimized=65.768%, avg_retained=10.7%
