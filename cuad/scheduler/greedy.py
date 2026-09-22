@@ -262,8 +262,27 @@ def schedule_optimal(
     *,
     capacity_kw: float | None = None,
     baseline_hours: dict[str, pd.Timestamp] | None = None,
+    total_capacity_kw: float | None = None,
+    mip_rel_gap: float | None = None,
+    time_limit: float | None = None,
+    allow_suboptimal: bool = False,
 ) -> dict:
     """Globally optimal placement under a per-hour capacity cap, via MILP.
+
+    Reviewer-1 additions (round 1):
+      total_capacity_kw  optional per-hour bound on TOTAL draw, i.e. shifted load
+                         PLUS jobs left at their baseline hour (requires
+                         baseline_hours). With it set to the observed peak of the
+                         unshifted load, every schedule stays inside the draw the
+                         existing equipment/connection is known to have served.
+      mip_rel_gap        HiGHS relative-gap tolerance; None keeps the HiGHS
+                         default (1e-4). Reported back together with the achieved
+                         gap and dual bound so "exact" claims can be audited.
+      time_limit         seconds; with allow_suboptimal=True a time-limited
+                         incumbent is returned with its status and gap instead of
+                         raising.
+    Constraint matrices are now SPARSE (scipy.sparse); the dense np.zeros
+    matrices were the memory wall that made the batch arm OOM above ~32k jobs.
 
     schedule() is a greedy heuristic: it fixes each job in ascending-slack order,
     so once the cap binds an early job can claim a cheap hour that a later job
@@ -303,10 +322,13 @@ def schedule_optimal(
         status:       solver status string
     """
     from scipy.optimize import Bounds, LinearConstraint, milp  # lazy: keep greedy dep-free
+    from scipy.sparse import coo_matrix
 
     import numpy as np
 
     _check_inputs(jobs, carbon)
+    if total_capacity_kw is not None and baseline_hours is None:
+        raise ValueError("total_capacity_kw needs baseline_hours (unshifted jobs must be placed somewhere)")
 
     costs: list[float] = []
     var_job: list[int] = []               # job row each variable belongs to
@@ -315,6 +337,7 @@ def schedule_optimal(
     var_power: list[float] = []
     jobs_with_vars: set[int] = set()
     unaccountable: list[str] = []
+    nothing_cover: dict[int, tuple[list[pd.Timestamp], float]] = {}  # var -> (hours, kW) at baseline
 
     for ji, job in enumerate(jobs):
         dur = duration_h(job)
@@ -341,6 +364,8 @@ def schedule_optimal(
                 var_kind.append(("nothing", bh))
                 var_cover.append([])
                 var_power.append(0.0)
+                nothing_cover[len(costs) - 1] = (
+                    [bh + pd.Timedelta(hours=h) for h in range(dur)], job.power_kw)
                 had_var = True
         if had_var:
             jobs_with_vars.add(ji)
@@ -352,34 +377,59 @@ def schedule_optimal(
         return {"assignments": {}, "total_gco2": 0.0, "do_nothing": [],
                 "unaccountable": unaccountable, "status": "empty"}
 
-    # one-variable-per-job equality constraints
+    # one-variable-per-job equality constraints (sparse)
     rows = sorted(jobs_with_vars)
     row_of = {ji: r for r, ji in enumerate(rows)}
-    a_eq = np.zeros((len(rows), nvar))
-    for v, ji in enumerate(var_job):
-        a_eq[row_of[ji], v] = 1.0
+    a_eq = coo_matrix(
+        (np.ones(nvar), ([row_of[ji] for ji in var_job], np.arange(nvar))),
+        shape=(len(rows), nvar),
+    ).tocsr()
     constraints = [LinearConstraint(a_eq, lb=1, ub=1)]
 
-    # per-hour capacity on shift variables only
+    # per-hour capacity on shift variables only (the paper's M, constraint (4))
     if capacity_kw is not None:
         hour_row: dict[pd.Timestamp, int] = {}
-        for cover in var_cover:
+        r_i, c_i, d_i = [], [], []
+        for v, cover in enumerate(var_cover):
             for hr in cover:
-                hour_row.setdefault(hr, len(hour_row))
+                r_i.append(hour_row.setdefault(hr, len(hour_row)))
+                c_i.append(v)
+                d_i.append(var_power[v])
         if hour_row:
-            a_ub = np.zeros((len(hour_row), nvar))
-            for v, cover in enumerate(var_cover):
-                for hr in cover:
-                    a_ub[hour_row[hr], v] = var_power[v]
+            a_ub = coo_matrix((d_i, (r_i, c_i)), shape=(len(hour_row), nvar)).tocsr()
             constraints.append(LinearConstraint(a_ub, ub=capacity_kw))
 
+    # optional per-hour bound on TOTAL draw: shift vars + do-nothing vars at baseline
+    if total_capacity_kw is not None:
+        hour_row_t: dict[pd.Timestamp, int] = {}
+        r_i, c_i, d_i = [], [], []
+        for v, cover in enumerate(var_cover):
+            for hr in cover:
+                r_i.append(hour_row_t.setdefault(hr, len(hour_row_t)))
+                c_i.append(v)
+                d_i.append(var_power[v])
+        for v, (hours_, kw) in nothing_cover.items():
+            for hr in hours_:
+                r_i.append(hour_row_t.setdefault(hr, len(hour_row_t)))
+                c_i.append(v)
+                d_i.append(kw)
+        if hour_row_t:
+            a_tot = coo_matrix((d_i, (r_i, c_i)), shape=(len(hour_row_t), nvar)).tocsr()
+            constraints.append(LinearConstraint(a_tot, ub=total_capacity_kw))
+
+    options = {}
+    if mip_rel_gap is not None:
+        options["mip_rel_gap"] = float(mip_rel_gap)
+    if time_limit is not None:
+        options["time_limit"] = float(time_limit)
     res = milp(
         c=np.asarray(costs, dtype=float),
         constraints=constraints,
         integrality=np.ones(nvar),
         bounds=Bounds(0, 1),
+        options=options or None,
     )
-    if not res.success or res.x is None:
+    if res.x is None or (not res.success and not allow_suboptimal):
         raise RuntimeError(f"schedule_optimal: MILP did not solve ({res.message})")
 
     assignments: dict[str, pd.Timestamp] = {}
@@ -397,6 +447,12 @@ def schedule_optimal(
         "do_nothing": do_nothing,
         "unaccountable": unaccountable,
         "status": str(res.status),
+        "message": str(res.message),
+        "mip_gap": float(getattr(res, "mip_gap", float("nan"))),
+        "mip_dual_bound": float(getattr(res, "mip_dual_bound", float("nan"))),
+        "mip_node_count": int(getattr(res, "mip_node_count", -1)),
+        "mip_rel_gap_tol": float(mip_rel_gap) if mip_rel_gap is not None else 1e-4,
+        "n_vars": nvar,
     }
 
 
