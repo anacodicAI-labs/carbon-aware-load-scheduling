@@ -32,13 +32,13 @@ def fig01(ci):
                           "hour": c_std.index.hour})
             .groupby(["month", "hour"])["ci"].mean().unstack("hour"))
     fig, ax = plt.subplots(figsize=(8.6, 4.2))
-    im = ax.imshow(grid.values, aspect="auto", origin="lower", cmap="viridis",
+    im = ax.imshow(grid.values, aspect="auto", origin="lower", cmap="viridis_r",
                    extent=[0, 24, 0.5, 12.5])
     ax.set_yticks(range(1, 13))
     ax.set_yticklabels(["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"])
     ax.set_xticks(range(0, 25, 2))
     ax.set_xlabel("hour of day (standard time, UTC$-$5)"); ax.set_ylabel("month")
-    fig.colorbar(im, ax=ax, label="gCO2/kWh")
+    fig.colorbar(im, ax=ax, label="carbon intensity (gCO$_2$/kWh)")
     fig.tight_layout(); U.savefig(fig, "01_ci_heatmap.png")
     print(f"[01] month x hour mean CI: min={grid.values.min():.1f} "
           f"max={grid.values.max():.1f} gCO2/kWh over {len(c):,} hours")

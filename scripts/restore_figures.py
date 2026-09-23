@@ -79,8 +79,9 @@ def fig04a(ci, hvac_df):
 
     fig, ax = plt.subplots(figsize=(6, 3.6))
     ax.plot(flex_vals, sav_flex, "o-", color="#2a9d8f")
-    ax.set_xlabel("flex_hours (slack granted each HVAC hour)")
+    ax.set_xlabel("deadline flexibility (± hours around the metered hour)")
     ax.set_ylabel("carbon saved (%)")
+    ax.grid(alpha=0.3)  # the notebooks set axes.grid globally; match the committed figure
     fig.tight_layout(); U.savefig(fig, "04a_savings_vs_flex.png")
 
     print("[04a] HVAC-only, uncapped greedy, x-axis is flex_hours (NOT slack):")

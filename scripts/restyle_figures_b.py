@@ -69,7 +69,8 @@ def fig04c(ci, hv, rh):
         fb = U.do_nothing_gco2(jm, rm, ci)
         op = schedule(jm, ci, capacity_kw=cap, baseline_hours=rm)["total_gco2"]
         sav.append(U.savings_pct(fb, op))
-    labels = list("JFMAMJJASOND")
+    labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     fig, ax = plt.subplots(figsize=(7.0, 3.8))
     ax.bar(range(12), sav, color="#4c7fa3", width=0.7)
     ax.set_xticks(range(12)); ax.set_xticklabels(labels)
@@ -96,7 +97,7 @@ def fig04d(mix, hv, rh):
     ax.plot(OTH_VALS, sav, "^-", color="#e76f51", lw=1.8, ms=7)
     ax.axvline(230, ls="--", color="gray", label="default (230, AR5 biomass)")
     ax.axvline(700, ls=":", color="gray", label="CarbonCast 'Other' (700)")
-    ax.set_xlabel("OTH emission factor (gCO2/kWh)"); ax.set_ylabel("carbon saved (%)")
+    ax.set_xlabel("OTH emission factor (gCO$_2$/kWh)"); ax.set_ylabel("carbon saved (%)")
     ax.grid(alpha=0.25, lw=0.6); ax.set_axisbelow(True)
     ax.legend(loc="lower left", fontsize=9)
     fig.tight_layout(); U.savefig(fig, "04d_savings_vs_oth_factor.png")
