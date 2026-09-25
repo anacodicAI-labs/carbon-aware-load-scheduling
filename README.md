@@ -19,7 +19,7 @@ This repository contains the data, code, and figures behind a measurement of how
 | Rashanjot Kaur | Department of Computer Science, Metropolitan College, Boston University, Boston, MA, USA |
 | Eugene Pinsky (corresponding — epinsky@bu.edu) | Department of Computer Science, Metropolitan College, Boston University, Boston, MA, USA |
 
-Manuscript in preparation, 2026.
+Submitted to *Advances in Carbon Neutrality* (MDPI), 2026; under revision.
 
 ---
 
@@ -27,11 +27,11 @@ Manuscript in preparation, 2026.
 
 Carbon-aware scheduling is usually reported as a function of one knob: how long you are willing to defer a job. That framing overstates what is available, because it silently assumes a deferred load can be stacked into a clean hour without limit. Once a per-hour power budget is added, three things follow.
 
-1. **The per-hour power budget, not deadline slack, sets the ceiling.** The same heat-pump workload with the same 6 hours of slack saves 12.70% uncapped but only 8.29% under a 3× median budget. The two loads do not even saturate at the same point: the batch arm reaches its uncapped ceiling by a budget of 4× median, while the heat pump has still not reached its own at 15.8× median (its observed annual peak).
+1. **The per-hour power budget, not deadline slack, sets the ceiling.** The same heat-pump workload with the same 6 hours of slack saves 12.70% uncapped but only 8.29% under a 3× median budget. The two loads do not even saturate at the same point: the batch arm reaches its uncapped ceiling by a budget of 6× median, while the heat pump has still not reached its own at 15.8× median (its observed annual peak). A stricter, physical limit — total hourly draw, shifted **plus** unshifted, held inside the building's observed 6.667 kW peak — gives **12.19%**.
 
-2. **How much a load can save is a property of the load, not of the scheduler.** Across the same carbon signal and the same optimizer, the heat pump saves 12.70%, GPU batch 3.21%, and EV charging 1.87%. The EV result is not a scheduling failure — 29.3% of the 8,507 real Caltech sessions have *zero* slack, because the driver unplugged as soon as charging finished. You cannot schedule a job that has nowhere to go.
+2. **How much a load can save is a property of the load, not of the scheduler.** Across the same carbon signal and the same optimizer, the heat pump saves 12.70%, GPU batch 3.97%, and EV charging 1.81%. The EV result is not a scheduling failure — evaluated in continuous time, 21.05% of the 9,827 valid Caltech sessions have less than one minute of slack, because the driver unplugged as soon as charging finished. You cannot schedule a job that has nowhere to go.
 
-3. **The headline survives the two assumptions most likely to break it.** Replacing perfect foresight with a strictly causal climatology forecast still saves 11.24% against the oracle's 12.70% — a forecast penalty of 1.46 pp, so about 88% of the available saving survives. And sweeping the one emission factor that is a modeling choice rather than a published value (`OTH`, across 130–700 gCO<sub>2</sub>/kWh) moves the working-cap result only between 7.70% and 5.57%. What does move the answer substantially is the *accounting basis*: switching from average to marginal intensity cuts the uncapped saving from 12.70% to 6.25%.
+3. **The headline survives the two assumptions most likely to break it.** Replacing perfect foresight with a strictly causal climatology forecast still saves 11.24% against the oracle's 12.70% — a forecast penalty of 1.46 pp, so about 88% of the available saving survives. And sweeping the one emission factor that is a modeling choice rather than a published value (`OTH`, across 130–700 gCO<sub>2</sub>/kWh) moves the working-cap result only between 7.70% and 5.57%. What does move the answer substantially is the *accounting basis*: switching from average to a coarse oil-or-gas marginal proxy cuts the uncapped saving from 12.70% to 6.25%. That proxy is now checked against ISO New England's published 2019 marginal rates, which do not support it — it calls 22.2% of hours oil-marginal where ISO reports oil on the margin about 0.1% of the time.
 
 ---
 
@@ -104,7 +104,7 @@ ResStock profiles are `amy2018` (real 2018 weather) and EIA's ISO-NE hourly seri
 | — reported subset | 2, 3, 4, 6 | `carbon_sim.CAP_SWEEP_K_REPORTED` |
 | — working point | $k = 3$ | `carbon_sim.WORKING_CAP_K` |
 | `OTH` emission factor | 130, 200, 230, 300, 420, 490, 600, 700 gCO<sub>2</sub>/kWh | `notebooks/04_sweeps.ipynb` |
-| Per-GPU power | 0.3, 0.4, 0.5 kW — cancels out of the percentage **in the analytic path only** (`ai_sweep.csv`), where it moves absolute tonnage alone. It is *not* invariant in the job-level path — see [the batch caveat](#the-three-loads-are-not-interchangeable) | `results/ai_sweep.csv` |
+| Per-GPU power | 0.3, 0.4, 0.5 kW — cancels out of the reported percentage in **both** paths now that the 0.1 kWh threshold is gone, so it moves absolute tonnage alone (3.969246% at every value) | `results/ai_sweep.csv`, `results/r1_batch_unified.csv` |
 | Batch flexibility | 0, 2, 6, 12, 24 h | `results/ai_sweep.csv` |
 | Grid region | ISO-NE, CAISO | `carbon_sim.load_carbon` |
 | Accounting basis | average vs marginal intensity | `nb_utils.marginal_ci` |
@@ -123,12 +123,12 @@ ResStock profiles are `amy2018` (real 2018 weather) and EIA's ISO-NE hourly seri
 ### Slack is a property of the load, not a knob
 
 <p align="center"><img src="figures/02_slack_histograms.png" width="760" alt="Deadline-slack ECDF for the three loads"></p>
-<p align="center"><em>Empirical CDF of deadline slack for all three loads. HVAC (12 h) and batch (6 h) slack is <strong>assigned</strong> by us — the dashed step functions. EV slack is <strong>measured</strong> from real plug-in/unplug behaviour, and 2,495 of 8,507 sessions (29.3%) have exactly zero: the driver left the moment charging finished. That spike, not the optimizer, is why the EV arm saves 1.87%.</em> Counts and the 29.3% figure are label text on this committed figure; they have no committed CSV behind them (see <a href="#reproducing-the-analysis">Reproducing</a>).</p>
+<p align="center"><em>Empirical CDF of deadline slack for all three loads. HVAC (12 h) and batch (6 h) slack is <strong>assigned</strong> by us — the dashed step functions. EV slack is <strong>measured</strong> from real plug-in/unplug behaviour and evaluated in continuous time: 2,069 of the 9,827 valid sessions (21.05%) have under one minute, because the driver left the moment charging finished. That spike, not the optimizer, is why the EV arm saves 1.81%.</em> Every count is in <code>results/r1_ev_audit.csv</code> and <code>results/r1_ev_exact_summary.csv</code>.</p>
 
 ### Per-hour budget vs. saving — the central result
 
 <p align="center"><img src="figures/04b_savings_vs_capacity.png" width="820" alt="Carbon saved vs per-hour budget, HVAC and batch, greedy and exact MILP"></p>
-<p align="center"><em>Carbon saved as a function of the per-hour budget <em>M</em>, expressed as a multiple <em>k</em> of each load's median hourly aggregate draw (log axis). The shaded band is the greedy heuristic's shortfall against the exact MILP optimum. At the working point <em>k</em>=3 (1.269 kW for this building) greedy reaches 7.28% against an optimum of 8.29% — a 1.01 pp gap. The heat pump has still not reached its 12.70% uncapped ceiling even at <em>k</em>=15.8 (its observed annual peak); the batch arm reaches its 3.21% ceiling by <em>k</em>=4.</em></p>
+<p align="center"><em>Carbon saved as a function of the per-hour budget <em>M</em>, expressed as a multiple <em>k</em> of each load's median hourly aggregate draw (log axis). The shaded band is the greedy heuristic's shortfall against the exact MILP optimum. At the working point <em>k</em>=3 (1.269 kW for this building) greedy reaches 7.28% against an optimum of 8.29% — a 1.01 pp gap. The heat pump has still not reached its 12.70% uncapped ceiling even at <em>k</em>=15.8 (its observed annual peak); the batch arm reaches its 3.97% ceiling by <em>k</em>=6.</em></p>
 
 **HVAC capacity sweep** — `results/capacity_sweep.csv`, generated by `scripts/capacity_sweep.py`:
 
@@ -144,27 +144,33 @@ ResStock profiles are `amy2018` (real 2018 weather) and EIA's ISO-NE hourly seri
 
 Even at the observed peak the budget is still doing work — a 0.46 pp gap and 506 jobs falling back — so "peak" is the loosest *swept* budget, not an unconstrained endpoint.
 
+**A physical limit on total draw** — the allocation budget bounds only *relocated* load, so it is not an equipment rating. Bounding total hourly draw instead (shifted **plus** unshifted, inside the observed 6.667 kW peak) is the stricter, physical constraint:
+
+| Constraint | Saving | Upper bound | Relative MIP gap |
+|---|---:|---:|---:|
+| Allocation budget, $M = 3\times$ median | 8.29% | 8.299% | 6.8×10⁻⁵ |
+| Total draw ≤ 6.667 kW, no $M$ | **12.19%** | 12.194% | 5.7×10⁻⁵ |
+| Both | 8.29% | 8.298% | 9.2×10⁻⁵ |
+| Neither (uncapped) | 12.70% | 12.699% | 0 |
+
+Source: `results/r1_hvac_capacity.csv`, generated by `python scripts/r1_reruns.py hvac`. Every row terminated **Optimal** (HiGHS status 7) with a relative gap below 1×10⁻⁴, and the upper-bound column converts the solver's dual bound into the best saving any feasible schedule could reach — so "exact" is auditable rather than asserted. Adding the total-draw limit on top of the budget changes nothing (8.2896% against 8.2923%), because at $k=3$ the scheduled total already peaks at exactly 6.667 kW.
+
 ### The three loads are not interchangeable
 
 | Load | Trace | $n$ | Uncapped saving | Source |
 |---|---|---:|---:|---|
-| HVAC heat pump | ResStock 486202, full-year 2019, flex 6 h | 8,363 blocks | **12.70%** | `window_restricted_hvac.csv`, `avg_vs_marginal_sweep.csv` |
-| GPU batch | Alibaba v2020, flex 6 h, ≥0.1 kWh jobs | 227,529 jobs | **3.21%** | `capacity_sweep_batch.csv` |
-| GPU batch | Alibaba v2020, flex 6 h, *all* completed tasks | 732,691 tasks | **3.97%** | `ai_sweep.csv` |
-| EV charging | Caltech ACN-Data 2019, observed windows | 8,507 sessions | **1.87%** | `capacity_sweep_ev.csv` |
+| HVAC heat pump | ResStock 486202, full-year 2019, flex 6 h | 8,363 blocks | **12.70%** | `r1_hvac_capacity.csv`, `window_restricted_hvac.csv` |
+| GPU batch | Alibaba v2020, flex 6 h, all completed tasks | 732,691 tasks | **3.97%** | `r1_batch_unified.csv`, `ai_sweep.csv` |
+| EV charging | Caltech ACN-Data 2019, observed windows, continuous time | 9,827 sessions | **1.81%** | `r1_ev_exact_summary.csv` |
 
-> **The two batch rows are different populations, not a discrepancy.** Both start from the same 732,691 parsed tasks (1,261,050 raw rows → 885,073 with status `Terminated` → 732,691 after dropping rows with unusable duration or GPU count). `ai_sweep.csv` prices all 732,691 analytically through `uncapped_alibaba_costs`, which applies **no** energy threshold. `capacity_sweep_batch.csv` goes through `alibaba_to_jobs`, whose only additional filter is `energy > min_kwh` (0.1 kWh); at 0.4 kW/GPU that leaves exactly **227,529** jobs. **The calendar window is not a factor** — the trace spans 2019-07-07 → 2019-09-13 and sits entirely inside the fetched carbon index, so no task is dropped by windowing. Do not quote 3.97% and 3.21% as the same quantity. The EV count of 8,507 comes from the gitignored ACN cache; it is not in any committed CSV.
+> **One batch population now.** All batch results use the same 732,691 tasks (1,261,050 raw rows → 885,073 with status `Terminated` → 732,691 after dropping rows with unusable duration or GPU count). The old 0.1 kWh energy threshold in `alibaba_to_jobs` has been **removed** (`min_kwh=0.0`): because it was applied *after* multiplying by `gpu_power_kw`, it made the job population depend on the swept power assumption (198,896 / 227,529 / 249,461 jobs at 0.3 / 0.4 / 0.5 kW per GPU). With it gone, per-GPU power scales baseline and schedule identically in **both** the analytic and the job-level path, so it cancels in every reported percentage — `ai_sweep.csv` gives 3.969246% at all three values — and moves absolute tonnage only. The superseded threshold variant (227,529 jobs, 3.21%) is retained in the manuscript only as the figure it replaced. **The calendar window is not a factor** — the trace spans 2019-07-07 → 2019-09-13, entirely inside the fetched carbon index.
 
-> ⚠️ **The 0.1 kWh threshold is applied after multiplying by `gpu_power_kw`, so the batch job population depends on the swept power assumption** — 198,896 / 227,529 / 249,461 jobs at 0.3 / 0.4 / 0.5 kW per GPU. Per-GPU power cancels out of the percentage in `ai_sweep.csv`, which applies no threshold and therefore scales baseline and schedule identically. It does **not** cleanly cancel in the job-level path, where it changes which jobs exist at all. `capacity_sweep_batch.csv` is reported at 0.4 kW/GPU only.
-
-> The dependence propagates into the budget axis as well, because the caps are derived from the surviving population. Median hourly aggregate draw — the basis for every `k` in the batch sweep — is **186.1 / 253.8 / 322.9 kW** at 0.3 / 0.4 / 0.5 kW per GPU, and the job-power-to-aggregate ratio quoted in the generators is itself power-dependent (620× / 635× / 646×). The relationship is superlinear: raising per-GPU power admits more marginal jobs past the 0.1 kWh threshold, which adds load on top of the per-job scaling. Only the 1,642 active hours are invariant. The whole batch capacity curve is therefore conditional on the 0.4 kW/GPU assumption.
-
-Two further caveats on cross-load comparison. The batch arm has **no exact optimum**: `schedule_optimal` builds dense constraint matrices and is OOM-killed above roughly 32,000 jobs on the reference machine (Apple M5, 17.2 GB), so the batch column of `capacity_sweep_batch.csv` is greedy-only and its `optimal_pct` is written as NaN rather than omitted. And the loads do not span the same calendar: restricted to the batch trace's 69-day window, the heat pump's uncapped ceiling drops from 12.70% to **9.57%** (`results/window_restricted_hvac.csv`), because summer is a low-savings season for it. Taking the HVAC/batch ratio straight off the figure overstates it by about 25%.
+Two further caveats on cross-load comparison. The batch arm is reported **greedy-only**: the MILP's constraint matrices are now sparse (`scipy.sparse`, which removed the ~32,000-job memory wall), but no exact batch solve is reported for the 732,691-task population. And the loads do not span the same calendar: restricted to the batch trace's 69-day window, the heat pump's uncapped ceiling drops from 12.70% to **9.57%** (`results/window_restricted_hvac.csv`), because summer is a low-savings season for it. Taking the HVAC/batch ratio straight off the figure overstates it by about 25%.
 
 ### The result survives imperfect foresight
 
 <p align="center"><img src="figures/05_oracle_vs_forecast.png" width="560" alt="Oracle vs causal climatology forecast"></p>
-<p align="center"><em>Scheduling on a strictly causal expanding-window climatology forecast — each hour predicted only from earlier hours sharing its (month, hour-of-day) cell — and pricing the result on the true carbon curve. The forecast-driven schedule saves 11.24% against the oracle's 12.70% — a penalty of 1.46 pp, retaining about 88% of the available saving — so the headline is not an artifact of perfect foresight. Both values are label text on this committed figure; the generator is <code>notebooks/05_forecast.ipynb</code>, with no committed CSV.</em></p>
+<p align="center"><em>Scheduling on a strictly causal expanding-window climatology forecast — each hour predicted only from earlier hours sharing its (month, hour-of-day) cell — and pricing the result on the true carbon curve. Without a budget the forecast-driven schedule saves 11.24% against the oracle's 12.70% — a penalty of 1.46 pp, retaining about 88% — and under the 1.269 kW budget it saves 7.58% against 8.29%, retaining 91.5%. The headline is not an artifact of perfect foresight. Values are in <code>results/r1_forecast_capped.csv</code>; the figure is drawn by <code>scripts/fig_r1.py</code>.</em></p>
 
 ### …and survives the one emission factor that is a modeling choice
 
@@ -184,7 +190,26 @@ Average intensity charges each kWh the generation-weighted mean of the hour's mi
 
 Source: `results/avg_vs_marginal_sweep.csv`. Positive Δ means the marginal basis *lowers* the attainable saving. This single choice moves the headline by more than the entire greedy-to-optimal gap, and by more than the full `OTH` sweep.
 
-Seasonally (`results/avg_vs_marginal_monthly.csv`, uncapped flex-6, average basis), the saving ranges from **3.13% in January** to **14.44% in May** — the heat pump's best months are the shoulder seasons, when its load is modest and the grid is cleanest, not the winter peaks when it draws most.
+**Validated against ISO New England's published marginal rates.** The oil-or-gas rule above is a proxy, and ISO New England publishes the real thing: hourly 2019 marginal CO<sub>2</sub> rates by fuel type, load-weighted, from the marginal units identified in each five-minute dispatch interval (`data/marginal/`, from the [ISO-NE emissions page](https://www.iso-ne.com/system-planning/system-plans-studies/emissions)). Scoring four schedules on that independent reference (`results/r1_marginal_iso.csv`, `python scripts/r1_reruns.py marginal-iso`):
+
+| Schedule optimized on | $M = 3\times$ median | No budget |
+|---|---:|---:|
+| Average signal | 3.62% | 7.05% |
+| Oil-or-gas proxy | 0.67% | 1.17% |
+| ISO-NE marginal rates | 28.93% | 65.77% |
+
+The proxy does not survive the check: it labels 22.2% of hours oil-marginal where ISO-NE reports oil on the margin about 0.1% of the time, and it correlates with the published series at only *r* = 0.074 (the average signal manages *r* = 0.189). The average-optimized schedule does lower marginal emissions — by 3.62% at the headline budget — but that is about an eighth of what optimizing directly on the published rates attains. The ISO-optimized column is an optimistic reference rather than an achievable target: 2.60% of 2019 hours have a zero marginal rate because only zero-rate units (pumped storage, hydro, wind) are on the margin, and for energy-limited units a zero short-run rate overstates what shifting into those hours avoids. Jobs placed in such hours account for 15.7% of the capped ISO-optimized saving and 30.0% of the uncapped one (`results/r1_logs/iso_zero_hours.txt`).
+
+### Seasonality has two different causes
+
+Under the working budget (*k*=3, flex 6 h, average basis, energy-weighted) the monthly saving ranges from **3.13% in January** to **14.44% in May** (`results/r2_monthly_savings.csv`). By season: **fall 10.76%, spring 9.26%, summer 6.65%, winter 5.48%**. These are *capped* figures — the budget is part of why they move.
+
+The two low seasons fail for opposite reasons (`results/decomposition_monthly.csv`, `results/r2_monthly_fallback.csv`, from `scripts/savings_decomposition.py` and `scripts/r2_seasonal_check.py`):
+
+- **Summer is limited by the grid.** July and August carry the year's highest baseline intensity (322.5 and 309.2 gCO<sub>2</sub>/kWh against an energy-weighted annual 267.5), and their ceilings are the year's lowest even with **no** budget at all: 8.44% and 9.87% against 12.70% for the year. Across the twelve months, mean baseline intensity and the uncapped ceiling correlate at *r* = −0.79.
+- **Winter is limited by the budget.** January's ceiling without a budget is the **highest of any month, 15.55%** — its grid is cleaner than average (245.0 gCO<sub>2</sub>/kWh) and more volatile (spread 63.4 against 58.9). The 3.13% is a contention effect: the mean January job draws **1.32 kW against a 1.269 kW budget**, so 238 of 741 January jobs cannot be relocated at all, 237 of them because their own power exceeds the budget outright. January alone supplies 238 of the year's 401 budget-blocked jobs.
+
+Uncapped, every job in every month finds a strictly cleaner hour, so the summer limit is a smaller available improvement, not an absence of clean hours: the overnight trough is present in all twelve months.
 
 ---
 
@@ -213,14 +238,14 @@ There is **no synthetic fallback anywhere**, and no flag to re-enable one. `nb_u
 
 ```bash
 python -c "import carbon_sim; carbon_sim.check_anchors()"   # 9 anchors, seconds
-pytest tests/                                               # 10 tests
+pytest tests/                                               # 32 tests
 ```
 
 `check_anchors()` is the commit gate: it reproduces the pipeline's load-bearing reference numbers on the committed one-week AL sample and raises `SystemExit` on the first mismatch, so a wiring change that silently moves a result is caught before it reaches a figure. Anchors: HVAC observed peak 2.761 kW; flex-6 capped saving 7.22% (ISO-NE) and 15.36% (CAISO); the uncapped flex sweep 0.00 / 1.85 / 3.39 / 5.93 / 8.67%; and greedy ≡ exact MILP when uncapped. It needs `EIA_API_KEY` or a real cached pull.
 
 > ⚠️ Run `check_anchors()` directly, as above — **not** `python carbon_sim.py`. The module's `main()` runs the gate and then reads `data/ev/caltech_2019-07-14_2019-07-16.json`, which is gitignored, so on a clean clone the gate passes and the script then fails.
 
-Both gates pass at the current HEAD: **9/9 anchors, 10/10 tests.**
+Both gates pass at the current HEAD: **9/9 anchors, 32/32 tests.**
 
 ### Regenerating the committed results
 
@@ -232,13 +257,31 @@ python scripts/capacity_sweep_ev.py       # results/capacity_sweep_ev.csv     (n
 python scripts/capacity_sweep_batch.py    # results/capacity_sweep_batch.csv  (needs the Alibaba download; greedy only)
 python scripts/avg_vs_marginal.py         # results/avg_vs_marginal_{sweep,monthly}.csv  (~4 min)
 python scripts/window_restricted_hvac.py  # results/window_restricted_hvac.csv (~2 min)
-python scripts/fig_savings_vs_capacity.py # figures/04b_savings_vs_capacity.png
+python scripts/fig_savings_vs_capacity.py # pre-revision 04b (superseded by scripts/fig_r1.py)
 python scripts/fig_ai_sweep.py            # figures/04e_ai_savings_sweep.png  (reads the CSV; no API key)
 ```
 
+**Revision runs (Reviewer 1 and Reviewer 2).** These write every number new to the revised manuscript:
+
+```bash
+python scripts/r1_reruns.py hvac --milp-time-limit 1800   # results/r1_hvac_capacity.csv   (~21 min; all rows Optimal)
+python scripts/r1_reruns.py forecast                      # results/r1_forecast_capped.csv (~7 min)
+python scripts/r1_reruns.py ev                            # results/r1_ev_{exact_summary,audit,exact_per_session}.csv (~20 s)
+python scripts/r1_reruns.py batch                         # results/r1_batch_unified.csv   (~10 min)
+python scripts/r1_reruns.py marginal-iso \
+    --iso-csv data/marginal/iso_ne_2019_marginal_loadweighted.csv   # results/r1_marginal_iso.csv (~15 s)
+python scripts/savings_decomposition.py   # results/decomposition_{monthly,counterfactual,slack,per_job}.csv (~3 s)
+python scripts/r2_seasonal_check.py       # results/r2_{monthly_savings,season_savings,monthly_binding}.csv (~2 min)
+python scripts/fig_r1.py                  # figures/02, 03, 04b, 05 — all from the R1/R2 CSVs
+```
+
+`marginal-iso` needs ISO New England's 2019 load-weighted hourly marginal CO<sub>2</sub> workbook, exported to `data/marginal/iso_ne_2019_marginal_loadweighted.csv` (columns `date, hour, fuel type, percent marginal, co2 rate`; hours are 0–23 hour-beginning in prevailing local time). Both the workbook and the exported CSV are committed under `data/marginal/`.
+
+`cals/ev_exact.py` holds the continuous-time EV evaluation and the session audit behind the 9,827 / 790 split; `cuad/scheduler/greedy.py` carries the sparse MILP, the total-draw constraint, and the solver status/gap/dual-bound reporting.
+
 **The one exception:** `results/ai_sweep.csv` is written by `notebooks/04_sweeps.ipynb`, not by anything under `scripts/`. It has no script generator.
 
-Figures `01`, `02`, `03`, `04a`, `04c`, `04d`, and `05` are produced by the notebooks. Note that `notebooks/04_sweeps.ipynb` *draws* the capacity figure but deliberately does not save it (`# intentionally NOT called`) — the committed `04b` comes from `scripts/fig_savings_vs_capacity.py`, which adds the batch arm the notebook version lacks. Two scripts, `fig_savings_vs_flex.py` and `fig_savings_vs_capacity_ev_batch.py`, write filenames (`savings_vs_slack_all_loads.png`, `04f_savings_vs_capacity_ev_batch.png`) that are **not** among the committed figures.
+Figures `02`, `03`, `04b`, and `05` are produced by `scripts/fig_r1.py` from the revision CSVs; `01`, `04a`, `04c`, and `04d` come from `scripts/restyle_figures_{a,b}.py` and the notebooks. `restyle_figures_a.py` deliberately no longer calls its `fig03`/`fig05` (they would overwrite the revision versions). Note that `notebooks/04_sweeps.ipynb` *draws* the capacity figure but deliberately does not save it (`# intentionally NOT called`); `scripts/fig_savings_vs_capacity.py` produced the pre-revision `04b` (kept in `figures/_pre_R1/`) and has been superseded by `scripts/fig_r1.py`, which redraws the batch arm from the unified 732,691-task population. Two scripts, `fig_savings_vs_flex.py` and `fig_savings_vs_capacity_ev_batch.py`, write filenames (`savings_vs_slack_all_loads.png`, `04f_savings_vs_capacity_ev_batch.png`) that are **not** among the committed figures.
 
 ### Provenance of every number in this README
 
@@ -246,10 +289,10 @@ Every value above is traceable to a committed CSV, committed code, or — where 
 
 | Number | Only committed source |
 |---|---|
-| EV n = 8,507; 2,495 zero-slack (29.3%); median slack 2 h | labels in `figures/02_slack_histograms.png`, `03_savings_by_load.png` |
 | `OTH` sweep result range 7.70% → 5.57% | labels in `figures/04d_savings_vs_oth_factor.png` |
-| Forecast penalty 12.70% → 11.24% | labels in `figures/05_oracle_vs_forecast.png` |
-| Flex-sweep curve 5.01% → 15.53% | `figures/04a_savings_vs_flex.png` |
+| Flex-sweep curve 5.01% → 15.53% | `figures/04a_savings_vs_flex.png` (also `results/decomposition_slack.csv`) |
+
+The EV counts and the forecast penalty are no longer figure-only: they are in `results/r1_ev_exact_summary.csv`, `results/r1_ev_audit.csv`, and `results/r1_forecast_capped.csv`.
 
 The `OTH` sweep *grid* (130–700) and the forecast *method* are in committed code; only the resulting percentages are figure-only.
 
@@ -272,6 +315,7 @@ carbon-aware-load-scheduling/
 ├── cals/                        # thin helper layer unique to this paper
 │   ├── ai_loads.py              # Alibaba GPU trace -> deferrable jobs
 │   ├── forecast.py              # causal climatology forecast + forecast penalty
+│   ├── ev_exact.py              # continuous-time EV evaluation + session audit
 │   └── acn_sessions.py          # Caltech ACN-Data fetch client
 │
 ├── notebooks/                   # the analysis, end to end, in order
@@ -282,12 +326,17 @@ carbon-aware-load-scheduling/
 │   ├── 04_sweeps.ipynb              flex / capacity / seasonal / OTH sweeps
 │   └── 05_forecast.ipynb            climatology forecast + penalty
 │
-├── scripts/                     # generators for the committed CSVs and two figures
+├── scripts/                     # generators for the committed CSVs and figures
+│   ├── r1_reruns.py             # hvac / forecast / ev / batch / marginal-iso reruns
+│   ├── savings_decomposition.py # exact spread x position / CI identity
+│   ├── r2_seasonal_check.py     # monthly + seasonal savings, budget-binding diagnostics
+│   └── fig_r1.py                # figures 02, 03, 04b, 05 from the revision CSVs
 ├── results/                     # committed CSVs — every reported table
-├── figures/                     # committed PNGs
-├── tests/                       # 10 tests
+├── figures/                     # committed PNGs (pre-revision copies in figures/_pre_R1/)
+├── tests/                       # 32 tests
 └── data/
     ├── hvac/                    # COMMITTED ResStock parquets + provenance sidecars
+    ├── marginal/                # COMMITTED ISO-NE 2019 marginal CO2 workbook + CSV export
     └── {carbon,ev,ai}/          # gitignored; filled by the loaders once keys are set
 ```
 

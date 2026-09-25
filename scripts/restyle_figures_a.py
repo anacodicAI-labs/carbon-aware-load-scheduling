@@ -106,7 +106,12 @@ def main():
     ci, source = U.get_carbon_intensity()
     hv, rh_hv, _ = U.load_hvac_jobs(flex_hours=6)
     ev, _ = U.get_ev_jobs(verbose=False)
-    fig01(ci); fig03(ci, hv, rh_hv, ev); fig05(ci, hv, rh_hv)
+    fig01(ci)
+    # fig03() and fig05() intentionally NOT called: 03 and 05 are owned by
+    # scripts/fig_r1.py, which draws them from the Reviewer-1 rerun CSVs (EV bar =
+    # exact continuous-time saving over 9,827 sessions; 05 carries the capped
+    # oracle/forecast pair). Calling them here would silently overwrite both with
+    # the pre-revision values. Same convention as fig04e below.
     # fig04e() intentionally NOT called -- see module docstring; 04e is owned
     # by scripts/restore_figures.py (committed two-panel form).
 
