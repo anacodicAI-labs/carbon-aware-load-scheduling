@@ -125,7 +125,7 @@ def fig04b(hvac, batch):
 
     fig, ax = plt.subplots(figsize=(7.6, 5.4))
     ax.axvspan(hk.min() * 0.86, 1.0, color="0.85", alpha=0.55, zorder=0,
-               label=r"degenerate (cap $\leq$ median aggregate)")
+               label=r"degenerate (budget $\leq$ median aggregate)")
     ax.fill_between(hk, gy, oy, color=C_HVAC, alpha=0.16, zorder=1, label="HVAC greedy shortfall")
     ax.plot(hk, gy, "s-", color=C_HVAC, lw=1.8, ms=6, zorder=4, label="HVAC heat pump, greedy (n=8,363)")
     ax.plot(hk, oy, "o--", color=C_HVAC, lw=1.8, ms=6, zorder=4, mfc="white", mew=1.5,
@@ -138,7 +138,7 @@ def fig04b(hvac, batch):
                label=f"Batch uncapped ceiling ({ba_unc:.2f}%)")
     w = hvac.loc["M=3x median"]
     ax.axvline(WORKING_CAP_K, ls="--", color="0.35", lw=1.1, zorder=2)
-    ax.annotate(f"working cap $k$={WORKING_CAP_K:g} ({float(w['M_kW']):.2f} kW for HVAC)\n"
+    ax.annotate(f"working budget $k$={WORKING_CAP_K:g} ({float(w['M_kW']):.2f} kW for HVAC)\n"
                 f"greedy {float(w['greedy_pct']):.2f}% / opt {float(w['optimal_pct']):.2f}%"
                 f" / gap {float(w['gap_pp']):.2f} pp",
                 xy=(WORKING_CAP_K, float(w["optimal_pct"])), xytext=(3.5, 5.2),
